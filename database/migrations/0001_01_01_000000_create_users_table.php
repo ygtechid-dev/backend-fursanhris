@@ -12,11 +12,26 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
+            $table->bigIncrements('id');
+            $table->string('first_name');
+            $table->string('last_name');
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('type');
+            $table->string('avatar')->default(config('chatify.user_avatar.default'));
+            $table->string('lang');
+            $table->integer('plan')->nullable();
+            $table->date('plan_expire_date')->nullable();
+            $table->float('storage_limit', 20, 2)->default(0.00);
+            $table->timestamp('last_login')->nullable();
+            $table->integer('is_active')->default('1');
+            $table->boolean('active_status')->default(0);
+            $table->integer('is_login_enable')->default(1);
+            $table->boolean('dark_mode')->default(0);
+            $table->string('messenger_color')->default('#2180f3');
+            $table->integer('is_disable')->default('1');
+            $table->string('created_by');
             $table->rememberToken();
             $table->timestamps();
         });
