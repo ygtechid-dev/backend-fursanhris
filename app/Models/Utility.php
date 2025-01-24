@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Illuminate\Support\Str;
 
 class Utility extends Model
 {
@@ -546,5 +547,12 @@ class Utility extends Model
         $data['employee_permission'] = $employee_permission;
 
         return $data;
+    }
+
+    public static function generateCompanyId()
+    {
+        // Combines current timestamp with a short random string
+        return 'CMP-' . time() . Str::random(5);
+        // Example output: COMP-1705988234x9k2
     }
 }

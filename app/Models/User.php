@@ -64,6 +64,11 @@ class User extends Authenticatable
         ];
     }
 
+    public function employee()
+    {
+        return $this->hasOne(Employee::class, 'user_id');
+    }
+
     public function currentLanguage()
     {
         return $this->lang;

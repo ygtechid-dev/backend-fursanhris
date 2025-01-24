@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Employee;
 use App\Models\User;
 use App\Models\Utility;
 use Illuminate\Database\Seeder;
@@ -2236,6 +2237,7 @@ class UsersTableSeeder extends Seeder
                 'password' => Hash::make('1234'),
                 'email_verified_at' => date("Y-m-d H:i:s"),
                 'type' => 'company',
+                'company_id' => Utility::generateCompanyId(),
                 'lang' => 'en',
                 'avatar' => '',
                 'plan' => 1,
@@ -2586,6 +2588,69 @@ class UsersTableSeeder extends Seeder
         // $company::userDefaultData();
         // $company->userDefaultDataRegister($company->id);
 
+        // $employee = User::create(
+        //     [
+        //         'first_name' => 'employee',
+        //         'last_name' => 'test',
+        //         'email' => 'employee.test@example.com',
+        //         'password' => Hash::make('password'),
+        //         'email_verified_at' => date("Y-m-d H:i:s"),
+        //         'type' => 'employee',
+        //         'lang' => $employeeRole->name,
+        //         'avatar' => '',
+        //         ''
+        //         'created_by' => $company->id,
+        //     ]
+        // );
+        $userEmployee = User::create(
+            [
+                'first_name' => 'employee',
+                'last_name' => 'test',
+                'email' => 'employee.test@example.com',
+                'password' => Hash::make('password'),
+                'type' => 'employee',
+                'lang' => 'en',
+                'avatar'    => '',
+                'created_by' => $company->id,
+                'email_verified_at' => date("Y-m-d H:i:s"),
+            ]
+        );
+        $userEmployee->assignRole($employeeRole);
+
+        $latest = Employee::where('created_by', '=', $company->id)->latest('id')->first();
+        if (!$latest) {
+            $latest = 1;
+        } else {
+            $latest = $latest->id + 1;
+        }
+
+
+        $employee = Employee::create(
+            [
+                'user_id' => $userEmployee->id,
+                'name' => $userEmployee->first_name . ' ' . $userEmployee->last_name,
+                'dob' => date("Y-m-d"),
+                'gender' => 'Male',
+                'phone' => '081392223993',
+                'address' => 'Jakarta, Indonesia',
+                'email' => 'employee.test@example.com',
+                'password' => Hash::make('password'),
+                'employee_id' => $latest,
+                // 'biometric_emp_id' => !empty($request['biometric_emp_id']) ? $request['biometric_emp_id'] : '',
+                'branch_id' => 1,
+                'department_id' => 1,
+                'designation_id' => 1,
+                'company_doj' => date("Y-m-d"),
+                // 'documents' => $document_implode,
+                'account_holder_name' => 'employee test',
+                'account_number' => '123443132',
+                'bank_name' => 'Bank Central Asia',
+                'bank_identifier_code' => 'CENAIDAJA',
+                'branch_location' => 'Jakarta',
+                // 'tax_payer_id' => $request['tax_payer_id'],
+                'created_by' => $company->id,
+            ]
+        );
 
         $data = [
             ['name' => 'local_storage_validation', 'value' => 'jpg,jpeg,png,xlsx,xls,csv,pdf', 'created_by' => 1, 'created_at' => now(), 'updated_at' => now()],

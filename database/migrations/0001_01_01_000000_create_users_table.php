@@ -19,6 +19,7 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->string('type');
+            $table->string('company_id')->nullable();
             $table->string('avatar')->default(config('chatify.user_avatar.default'));
             $table->string('lang');
             $table->integer('plan')->nullable();

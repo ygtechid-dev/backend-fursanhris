@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class Employee extends Model
 {
@@ -36,6 +37,16 @@ class Employee extends Model
         'created_by',
     ];
 
+    public function documents()
+    {
+        return $this->hasMany('App\Models\EmployeeDocument', 'employee_id', 'employee_id')->get();
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
     public static function employee_name($name)
     {
 
@@ -66,5 +77,20 @@ class Employee extends Model
         } else {
             return $employee->salary;
         }
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo('App\Models\Branch', 'id', 'branch_id');
+    }
+
+    public function department()
+    {
+        return $this->belongsTo('App\Models\Department', 'id', 'department_id');
+    }
+
+    public function designation()
+    {
+        return $this->belongsTo('App\Models\Designation', 'id', 'designation_id');
     }
 }

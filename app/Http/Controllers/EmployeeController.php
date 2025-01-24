@@ -112,11 +112,13 @@ class EmployeeController extends Controller
 
             $user = User::create(
                 [
-                    'name' => $request['name'],
+                    'first_name' => $request['first_name'],
+                    'last_name' => $request['last_name'],
                     'email' => $request['email'],
                     'password' => Hash::make($request['password']),
                     'type' => 'employee',
                     // 'lang' => !empty($default_language) ? $default_language->value : 'en',
+                    'avatar' => '',
                     'lang' => 'en',
                     'created_by' => Auth::user()->creatorId(),
                     'email_verified_at' => $date,
@@ -387,9 +389,10 @@ class EmployeeController extends Controller
         }
     }
 
-    function employeeNumber()
+    function employeeNumber($creatorId = null)
     {
-        $latest = Employee::where('created_by', '=', Auth::user()->creatorId())->latest('id')->first();
+        if ($creatorId == null) $creatorId =  Auth::user()->creatorId();
+        $latest = Employee::where('created_by', '=', $creatorId)->latest('id')->first();
         if (!$latest) {
             return 1;
         }

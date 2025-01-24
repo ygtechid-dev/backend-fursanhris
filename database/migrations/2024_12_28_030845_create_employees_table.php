@@ -16,16 +16,16 @@ return new class extends Migration
             $table->integer('user_id');
             $table->string('name');
             $table->date('dob')->nullable();
-            $table->string('gender');
+            $table->string('gender')->nullable();
             $table->string('phone')->nullable();
-            $table->string('address');
+            $table->string('address')->nullable();
             $table->string('email');
             $table->string('password');
 
             $table->string('employee_id');
-            $table->integer('branch_id');
-            $table->integer('department_id');
-            $table->integer('designation_id');
+            $table->integer('branch_id')->nullable();
+            $table->integer('department_id')->nullable();
+            $table->integer('designation_id')->nullable();
             $table->string('company_doj')->nullable();
             $table->string('documents')->nullable();
 
@@ -40,6 +40,7 @@ return new class extends Migration
             $table->float('salary', 20, 2)->default(0.00);
             $table->integer('is_active')->default('1');
             $table->integer('created_by');
+            $table->timestamps();
         });
     }
 

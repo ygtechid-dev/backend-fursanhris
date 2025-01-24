@@ -89,6 +89,7 @@ class UserController extends Controller
                         'is_login_enable' => !empty($request->password_switch) && $request->password_switch == 'on' ? 1 : 0,
                         'password' => !empty($userpassword) ? Hash::make($userpassword) : null,
                         'type' => 'company',
+                        'company_id' => Utility::generateCompanyId(),
                         // 'plan' => $plan = Plan::where('price', '<=', 0)->first()->id,
                         // 'lang' => !empty($default_language) ? $default_language->value : 'en',
                         'lang' => 'en',
