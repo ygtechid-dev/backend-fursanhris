@@ -603,6 +603,12 @@ class UsersTableSeeder extends Seeder
                 "updated_at" => date('Y-m-d H:i:s'),
             ],
             [
+                "name" => "Manage Overtime",
+                "guard_name" => "web",
+                "created_at" => date('Y-m-d H:i:s'),
+                "updated_at" => date('Y-m-d H:i:s'),
+            ],
+            [
                 "name" => "Create Overtime",
                 "guard_name" => "web",
                 "created_at" => date('Y-m-d H:i:s'),
@@ -2549,6 +2555,7 @@ class UsersTableSeeder extends Seeder
             'Manage Allowance',
             'Manage Event',
             'Manage Announcement',
+            'Manage Leave Type',
             'Manage Leave',
             'Create Leave',
             'Edit Leave',
@@ -2575,6 +2582,9 @@ class UsersTableSeeder extends Seeder
             'Delete Attachment',
             'Manage Zoom meeting',
             'Show Zoom meeting',
+            'Manage Designation',
+            'Manage Overtime',
+            'Create Overtime',
         ];
 
         $employeeRole->givePermissionTo($employeePermission);

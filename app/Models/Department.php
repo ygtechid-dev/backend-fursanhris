@@ -15,6 +15,6 @@ class Department extends Model
 
     public function branch()
     {
-        return $this->belongsTo('App\Models\Branch', 'id', 'branch_id');
+        return $this->belongsTo('App\Models\Branch', 'branch_id');
     }
 }

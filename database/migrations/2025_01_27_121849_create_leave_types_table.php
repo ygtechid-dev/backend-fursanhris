@@ -11,11 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('designations', function (Blueprint $table) {
+        Schema::create('leave_types', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->integer('branch_id');
-            $table->integer('department_id');
-            $table->string('name');
+            $table->string('title');
+            $table->integer('days');
             $table->integer('created_by');
             $table->timestamps();
         });
@@ -26,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('designations');
+        Schema::dropIfExists('leave_types');
     }
 };

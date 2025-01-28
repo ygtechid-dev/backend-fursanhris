@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers;
 use App\Http\Controllers\AuthenticationController;
+use App\Http\Controllers\Mobile;
 use App\Http\Middleware\CheckPlatformAccess;
 use Illuminate\Cache\Events\RetrievingKey;
 
@@ -28,6 +29,10 @@ Route::post('/mobile/sign-up', [AuthenticationController::class, 'registerMobile
 
 // Protected routes with Sanctum
 Route::middleware(['auth:sanctum'])->group(function () {
+    /** Master */
+    Route::apiResource('leave-types', Controllers\LeaveTypeController::class);
+    Route::apiResource('designations', Controllers\DesignationController::class);
+
     // Route untuk mobile
     Route::middleware(CheckPlatformAccess::class . ':mobile')->prefix('mobile')->group(function () {
         Route::get('/mobile-test', function () {
@@ -41,6 +46,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/forgot-password', [AuthenticationController::class, 'forgotPassword']);
         Route::post('/check-reset-token', [AuthenticationController::class, 'checkResetPasswordToken']);
         Route::post('/reset-password', [AuthenticationController::class, 'resetPassword']);
+
+        /** Leave */
+        Route::prefix('leaves')->group(function () {
+            Route::get('/', [Mobile\LeaveController::class, 'index']);
+            Route::post('/submit-request', [Mobile\LeaveController::class, 'store']);
+            Route::get('/check-remaining-leave', [Mobile\LeaveController::class, 'checkRemainingLeave']);
+        });
+
+        /** Overtime */
+        Route::prefix('overtimes')->group(function () {
+            Route::get('/', [Mobile\OvertimeController::class, 'index']);
+            Route::post('/submit-request', [Mobile\OvertimeController::class, 'store']);
+        });
     });
 
     // Route untuk web

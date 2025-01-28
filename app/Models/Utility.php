@@ -555,4 +555,61 @@ class Utility extends Model
         return 'CMP-' . time() . Str::random(5);
         // Example output: COMP-1705988234x9k2
     }
+
+    public static function AnnualLeaveCycle()
+    {
+        $start_date = '' . date('Y') . '-01-01';
+        $end_date = '' . date('Y') . '-12-31';
+        $start_date = date('Y-m-d', strtotime($start_date . ' -1 day'));
+        $end_date = date('Y-m-d', strtotime($end_date . ' +1 day'));
+
+        $date['start_date'] = $start_date;
+        $date['end_date']   = $end_date;
+
+        return $date;
+    }
+
+    public static function checkLeaveRemainingbyType($employee_id, $leave_type_id)
+    {
+        // Find leave type
+        $leave_type = LeaveType::find($leave_type_id);
+        if (!$leave_type) {
+            return [
+                'status' => false,
+                'message' => 'Leave type not found.',
+                'data' => null
+            ];
+        }
+
+        // Get annual leave cycle dates
+        $date = Utility::AnnualLeaveCycle();
+
+        // Calculate approved leaves
+        $leaves_used = Leave::where('employee_id', $employee_id)
+            ->where('leave_type_id', $leave_type->id)
+            ->where('status', 'approved')
+            ->whereBetween('created_at', [$date['start_date'], $date['end_date']])
+            ->sum('total_leave_days');
+
+        // Calculate pending leaves
+        $leaves_pending = Leave::where('employee_id', $employee_id)
+            ->where('leave_type_id', $leave_type->id)
+            ->where('status', 'pending')
+            ->whereBetween('created_at', [$date['start_date'], $date['end_date']])
+            ->sum('total_leave_days');
+
+        // Calculate remaining leaves
+        $remaining_leaves = $leave_type->days - $leaves_used;
+
+        return [
+            'status' => true,
+            'data' => [
+                'leave_type' => $leave_type->title,
+                'total_allowed_days' => $leave_type->days,
+                'leaves_used' => intval($leaves_used),
+                'leaves_pending' => intval($leaves_pending),
+                'remaining_leaves' => intval($remaining_leaves)
+            ]
+        ];
+    }
 }
