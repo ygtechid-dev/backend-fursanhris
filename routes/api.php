@@ -25,7 +25,13 @@ use Illuminate\Cache\Events\RetrievingKey;
 Route::post('/login', [Controllers\AuthenticationController::class, 'login'])
     ->name('login');
 
-Route::post('/mobile/sign-up', [AuthenticationController::class, 'registerMobile']);
+
+Route::prefix('mobile')->group(function () {
+    Route::post('/sign-up', [AuthenticationController::class, 'registerMobile']);
+    Route::post('/forgot-password', [AuthenticationController::class, 'forgotPassword']);
+    Route::post('/check-reset-token', [AuthenticationController::class, 'checkResetPasswordToken']);
+    Route::post('/reset-password', [AuthenticationController::class, 'resetPassword']);
+});
 
 // Protected routes with Sanctum
 Route::middleware(['auth:sanctum'])->group(function () {
@@ -35,17 +41,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Route untuk mobile
     Route::middleware(CheckPlatformAccess::class . ':mobile')->prefix('mobile')->group(function () {
-        Route::get('/mobile-test', function () {
-            return response()->json([
-                'status' => true,
-                'message' => 'Auth Check'
-            ], 200);
-        });
-
         Route::post('/update-account-profile', [AuthenticationController::class, 'updateAccountProfile']);
-        Route::post('/forgot-password', [AuthenticationController::class, 'forgotPassword']);
-        Route::post('/check-reset-token', [AuthenticationController::class, 'checkResetPasswordToken']);
-        Route::post('/reset-password', [AuthenticationController::class, 'resetPassword']);
 
         /** Leave */
         Route::prefix('leaves')->group(function () {

@@ -78,7 +78,6 @@ class OvertimeController extends Controller
 
             $overtime = new Overtime();
             $overtime->employee_id = $user->employee->id;
-            $overtime->title = $request->title;
             // $overtime->number_of_days = $request->number_of_days;
             $overtime->overtime_date = $request->overtime_date;
             $overtime->start_time = $request->start_time;
