@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
@@ -63,11 +65,14 @@ class Utility extends Model
             "company_telephone" => "",
             "company_email" => "",
             "company_email_from_name" => "",
+            "company_start_time" => "09:00:00",
+            "company_end_time" => "18:00:00",
+            "company_logo" => 'logo-dark.png',
+            "company_logo_light" => 'logo-light.png',
+            'company_timezone' => 'UTC',
             "employee_prefix" => "#EMP00",
             "footer_title" => "",
             "footer_notes" => "",
-            "company_start_time" => "09:00",
-            "company_end_time" => "18:00",
             'new_user' => '1',
             'new_employee' => '1',
             'new_payroll' => '1',
@@ -99,8 +104,6 @@ class Utility extends Model
             "cust_theme_bg" => "on",
             "cust_darklayout" => "off",
             "SITE_RTL" => "off",
-            "company_logo" => 'logo-dark.png',
-            "company_logo_light" => 'logo-light.png',
             "dark_logo" => "logo-dark.png",
             "light_logo" => "logo-light.png",
             "contract_prefix" => "#CON",
@@ -172,6 +175,15 @@ class Utility extends Model
         }
 
         return $settings;
+    }
+
+    public static function getValByName($key)
+    {
+        $setting = Utility::settings();
+        if (!isset($setting[$key]) || empty($setting[$key])) {
+            $setting[$key] = '';
+        }
+        return $setting[$key];
     }
 
     public static function getStorageSetting()
@@ -611,5 +623,134 @@ class Utility extends Model
                 'remaining_leaves' => intval($remaining_leaves)
             ]
         ];
+    }
+
+    public static function getCompanySchedule($companyId, $countryCode = null)
+    {
+        $settings = self::settings();
+
+        return $settings;
+    }
+
+    public static function convertToCompanyTime($time, $companyId, $countryCode = null)
+    {
+        $schedule = self::getCompanySchedule($companyId, $countryCode);
+        $datetime = new \DateTime($time, new \DateTimeZone('UTC'));
+        $datetime->setTimezone(new \DateTimeZone($schedule['company_timezone']));
+        return $datetime->format('Y-m-d H:i:s');
+    }
+
+    public static function fetchCompanySettings()
+    {
+        if (Auth::user()->type == 'company' || Auth::user()->type == 'super admin') {
+            try {
+                // Daftar field yang diharapkan
+                $defaultSettings = [
+                    'company_name' => '',
+                    'company_address' => '',
+                    'company_city' => '',
+                    'company_state' => '',
+                    'company_zipcode' => '',
+                    'company_country' => '',
+                    'company_telephone' => '',
+                    'company_start_time' => '',
+                    'company_end_time' => '',
+                    'company_timezone' => 'UTC', // Default timezone
+                    'ip_restrict' => ''
+                ];
+
+                // Ambil data dari database
+                $settings = DB::table('settings')
+                    ->where('created_by', Auth::user()->creatorId())
+                    ->whereIn('name', array_keys($defaultSettings))
+                    ->get()
+                    ->pluck('value', 'name')
+                    ->toArray();
+
+                // Gabungkan dengan default settings
+                $settings = array_merge($defaultSettings, $settings);
+
+                return response()->json([
+                    'status' => true,
+                    'data' => $settings,
+                    'message' => 'Company settings retrieved successfully.'
+                ], 200);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'An error occurred while fetching company settings: ' . $e->getMessage()
+                ], 500);
+            }
+        } else {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized access.'
+            ], 403);
+        }
+    }
+
+
+    public static function saveCompanySettings(Request $request)
+    {
+        if (Auth::user()->type == 'company' || Auth::user()->type == 'super admin') {
+
+            $user = Auth::user();
+            $request->validate(
+                [
+                    'company_name' => 'nullable|string|max:255',
+                    'company_address' => 'nullable',
+                    'company_city' => 'nullable',
+                    'company_state' => 'nullable',
+                    'company_zipcode' => 'nullable',
+                    'company_country' => 'nullable',
+                    'company_telephone' => 'nullable',
+                    'company_start_time' => 'nullable',
+                    'company_end_time' => 'nullable',
+                    'company_timezone' => 'nullable',
+                    // 'company_email' => 'nullable',
+                    // 'company_email_from_name' => 'nullable|string',
+                ]
+            );
+            $post = $request->all();
+            if (!isset($request->ip_restrict)) {
+                $post['ip_restrict'] = 'off';
+            }
+            unset($post['_token']);
+
+            $settings = Utility::settings();
+            foreach ($post as $key => $data) {
+                if ((in_array($key, array_keys($settings)) && $data !== null)) {
+
+                    DB::insert(
+                        'insert into settings (`value`, `name`,`created_by`) values (?, ?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`) ',
+                        [
+                            // $settings,
+                            $data,
+                            $key,
+                            Auth::user()->creatorId(),
+                        ]
+                    );
+                }
+            }
+
+            // return redirect()->back()->with('success', __('Setting successfully updated.'));
+            return response()->json([
+                'status' => true,
+                'message' => 'Setting successfully updated.',
+            ], 201);
+        } else {
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while processing update.',
+            ], 500);
+        }
+    }
+
+    public static function formatDateTimeToCompanyTz($dateTime, $companyTz)
+    {
+        if (!$dateTime || $dateTime === '0000-00-00 00:00:00') {
+            return null;
+        }
+        return Carbon::parse($dateTime)->setTimezone($companyTz);
     }
 }

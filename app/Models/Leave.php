@@ -18,15 +18,35 @@ class Leave extends Model
         'remark',
         'status',
         'created_by',
+        'approved_by',
+        'approved_at',
+        'rejected_by',
+        'rejected_at'
     ];
+
+    protected $casts = [
+        'approved_at' => 'datetime',
+        'rejected_at' => 'datetime'
+    ];
+
+    // Add relationships for tracking users
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function rejecter()
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
+    }
 
     public function leaveType()
     {
-        return $this->hasOne('App\Models\LeaveType', 'id', 'leave_type_id');
+        return $this->belongsTo('App\Models\LeaveType', 'leave_type_id');
     }
 
-    public function employees()
+    public function employee()
     {
-        return $this->hasOne('App\Models\Employee', 'id', 'employee_id');
+        return $this->belongsTo('App\Models\Employee', 'employee_id');
     }
 }

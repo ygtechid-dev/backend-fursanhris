@@ -24,6 +24,10 @@ return new class extends Migration
             $table->string('remark')->nullable();
             $table->enum('status', ['pending', 'approved', 'rejected']);
             $table->integer('created_by');
+            $table->integer('approved_by')->nullable();
+            $table->timestamp('approved_at')->nullable();
+            $table->integer('rejected_by')->nullable();
+            $table->timestamp('rejected_at')->nullable();
             $table->timestamps();
         });
     }

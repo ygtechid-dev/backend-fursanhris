@@ -2232,6 +2232,7 @@ class UsersTableSeeder extends Seeder
             'Delete Zoom meeting',
             'Manage Biometric Attendance',
             'Biometric Attendance Synchronize',
+            'Manage Overtime',
         ];
 
         $companyRole->givePermissionTo($companyPermissions);
@@ -2679,6 +2680,11 @@ class UsersTableSeeder extends Seeder
             ['name' => 'strictly_cookie_description', 'value' => 'These cookies are essential for the proper functioning of my website. Without these cookies, the website would not work properly', 'created_by' => 1, 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'more_information_description', 'value' => 'For any queries in relation to our policy on cookies and your choices, please contact us', 'created_by' => 1, 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'contactus_url', 'value' => '#', 'created_by' => 1, 'created_at' => now(), 'updated_at' => now()],
+
+
+            ['name' => 'company_timezone', 'value' => 'Asia/Jakarta', 'created_by' => $company->id, 'created_at' => now(), 'updated_at' => now()],
+            // ['name' => 'company_start_time', 'value' => '09:00', 'created_by' => 1, 'created_at' => now(), 'updated_at' => now()],
+            // ['name' => 'company_end_time', 'value' => '18:00', 'created_by' => 1, 'created_at' => now(), 'updated_at' => now()],
         ];
         DB::table('settings')->insert($data);
     }

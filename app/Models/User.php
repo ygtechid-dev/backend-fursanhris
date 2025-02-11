@@ -25,7 +25,7 @@ class User extends Authenticatable
         'company_name',
         'email',
         'password',
-        'type',
+        'type', // company, employee, dan lain lain
         'avatar',
         'lang',
         'plan',
@@ -62,6 +62,22 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             // 'password' => 'hashed',
         ];
+    }
+
+    public function employee_name()
+    {
+
+        $first_name = $this->first_name;
+        $last_name = $this->last_name;
+
+        return "$first_name $last_name";
+    }
+
+    public static function employeeIdFormat($number)
+    {
+        $settings = Utility::settings();
+
+        return $settings["employee_prefix"] . sprintf("%05d", $number);
     }
 
     public function employee()

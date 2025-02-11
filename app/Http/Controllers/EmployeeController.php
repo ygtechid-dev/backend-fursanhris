@@ -2,10 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
+use App\Models\Department;
+use App\Models\Designation;
 use App\Models\Employee;
 use App\Models\User;
+use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
@@ -22,10 +28,11 @@ class EmployeeController extends Controller
             if (Auth::user()->type == 'employee') {
                 $employees = Employee::where('user_id', '=', Auth::user()->id)->get();
             } else {
-                $employees = Employee::where('created_by', \Auth::user()->creatorId())->with(['branch', 'department', 'designation', 'user'])->get();
+                $employees = Employee::where('created_by', Auth::user()->creatorId())->with(['branch', 'department', 'designation', 'user'])->get();
             }
 
             return response()->json([
+                'status'    => true,
                 'message'   => 'Successfully retrieved data',
                 'data'      => $employees
             ]);
@@ -37,9 +44,8 @@ class EmployeeController extends Controller
     public function store(Request $request)
     {
         if (Auth::user()->can('Create Employee')) {
-
             $rules = [
-                'name' => 'required|max:120',
+                'name' => 'required|max:150',
                 'dob' => 'before:' . date('Y-m-d'),
                 'gender' => 'required',
                 'phone' => 'required',
@@ -49,7 +55,7 @@ class EmployeeController extends Controller
                 'branch_id' => 'required',
                 'department_id' => 'required',
                 'designation_id' => 'required',
-                'document.*' => 'required',
+                'document.*' => 'nullable',
             ];
             // $rules['biometric_emp_id'] = [
             //     'required',
@@ -71,153 +77,213 @@ class EmployeeController extends Controller
                 ], 400);
             }
 
-            $objUser        = User::find(Auth::user()->creatorId());
-            $total_employee = $objUser->countEmployees();
-            // $plan           = Plan::find($objUser->plan);
-            $date = date("Y-m-d H:i:s");
-            // $default_language = DB::table('settings')->select('value')->where('name', 'default_language')->where('created_by', \Auth::user()->creatorId())->first();
+            try {
+                // dd(Carbon::parse($request->dob), $request->all());
+                DB::beginTransaction();
+                $objUser        = User::find(Auth::user()->creatorId());
+                // $total_employee = $objUser->countEmployees();
+                // $plan           = Plan::find($objUser->plan);
+                $date = date("Y-m-d H:i:s");
+                // $default_language = DB::table('settings')->select('value')->where('name', 'default_language')->where('created_by', \Auth::user()->creatorId())->first();
 
-            // new company default language
-            // if ($default_language == null) {
-            //     $default_language = DB::table('settings')->select('value')->where('name', 'default_language')->first();
-            // }
+                // new company default language
+                // if ($default_language == null) {
+                //     $default_language = DB::table('settings')->select('value')->where('name', 'default_language')->first();
+                // }
 
-            // if ($request->hasFile('document')) {
-            //     foreach ($request->document as $key => $document) {
+                // if ($request->hasFile('document')) {
+                //     foreach ($request->document as $key => $document) {
 
-            //         $image_size = $request->file('document')[$key]->getSize();
-            //         $result = Utility::updateStorageLimit(\Auth::user()->creatorId(), $image_size);
+                //         $image_size = $request->file('document')[$key]->getSize();
+                //         $result = Utility::updateStorageLimit(\Auth::user()->creatorId(), $image_size);
 
-            //         if ($result == 1) {
-            //             $filenameWithExt = $request->file('document')[$key]->getClientOriginalName();
-            //             $filename        = pathinfo($filenameWithExt, PATHINFO_FILENAME);
-            //             $extension       = $request->file('document')[$key]->getClientOriginalExtension();
-            //             $fileNameToStore = $filename . '_' . time() . '.' . $extension;
-            //             $dir             = 'uploads/document/';
+                //         if ($result == 1) {
+                //             $filenameWithExt = $request->file('document')[$key]->getClientOriginalName();
+                //             $filename        = pathinfo($filenameWithExt, PATHINFO_FILENAME);
+                //             $extension       = $request->file('document')[$key]->getClientOriginalExtension();
+                //             $fileNameToStore = $filename . '_' . time() . '.' . $extension;
+                //             $dir             = 'uploads/document/';
 
-            //             $image_path      = $dir . $fileNameToStore;
+                //             $image_path      = $dir . $fileNameToStore;
 
-            //             $path = \App\Models\Utility::upload_coustom_file($request, 'document', $fileNameToStore, $dir, $key, []);
+                //             $path = \App\Models\Utility::upload_coustom_file($request, 'document', $fileNameToStore, $dir, $key, []);
 
-            //             if ($path['flag'] == 1) {
-            //                 $url = $path['url'];
-            //             } else {
-            //                 return redirect()->back()->with('error', __($path['msg']));
-            //             }
-            //         }
-            //     }
-            // }
+                //             if ($path['flag'] == 1) {
+                //                 $url = $path['url'];
+                //             } else {
+                //                 return redirect()->back()->with('error', __($path['msg']));
+                //             }
+                //         }
+                //     }
+                // }
 
-            // if ($total_employee < $plan->max_employees || $plan->max_employees == -1) {
+                // if ($total_employee < $plan->max_employees || $plan->max_employees == -1) {
 
-            $user = User::create(
-                [
-                    'first_name' => $request['first_name'],
-                    'last_name' => $request['last_name'],
-                    'email' => $request['email'],
-                    'password' => Hash::make($request['password']),
-                    'type' => 'employee',
-                    // 'lang' => !empty($default_language) ? $default_language->value : 'en',
-                    'avatar' => '',
-                    'lang' => 'en',
-                    'created_by' => Auth::user()->creatorId(),
-                    'email_verified_at' => $date,
+                $name_parts = explode(' ', $request['name'], 2); // Batasi menjadi 2 bagian
+                $first_name = $name_parts[0];
+                $last_name = isset($name_parts[1]) ? $name_parts[1] : ''; // Jika tidak ada last name, set empty string
+                $user = User::create(
+                    [
+                        'first_name' => $first_name,
+                        'last_name' => $last_name,
+                        'email' => $request['email'],
+                        'password' => Hash::make($request['password']),
+                        'type' => 'employee',
+                        // 'lang' => !empty($default_language) ? $default_language->value : 'en',
+                        'avatar' => '',
+                        'lang' => 'en',
+                        'created_by' => Auth::user()->creatorId(),
+                        'email_verified_at' => $date,
+                    ]
+                );
+                $user->save();
+                $user->assignRole('employee');
+
+                // } else {
+                //     return redirect()->back()->with('error', __('Your employee limit is over, Please upgrade plan.'));
+                // }
+
+
+                // if (!empty($request->document) && !is_null($request->document)) {
+                //     $document_implode = implode(',', array_keys($request->document));
+                // } else {
+                //     $document_implode = null;
+                // }
+
+
+                $employee = Employee::create(
+                    [
+                        'user_id' => $user->id,
+                        'name' => $request['name'],
+                        'dob' => $request['dob'],
+                        'gender' => $request['gender'],
+                        'phone' => $request['phone'],
+                        'address' => $request['address'],
+                        'email' => $request['email'],
+                        'password' => Hash::make($request['password']),
+                        'employee_id' => $this->employeeNumber(),
+                        // 'biometric_emp_id' => !empty($request['biometric_emp_id']) ? $request['biometric_emp_id'] : '',
+                        'branch_id' => $request['branch_id'],
+                        'department_id' => $request['department_id'],
+                        'designation_id' => $request['designation_id'],
+                        'company_doj' => $request['company_doj'],
+                        // 'documents' => $document_implode,
+                        'account_holder_name' => $request['account_holder_name'] ?? null,
+                        'account_number' => $request['account_number'] ?? null,
+                        'bank_name' => $request['bank_name'] ?? null,
+                        'bank_identifier_code' => $request['bank_identifier_code'] ?? null,
+                        'branch_location' => $request['branch_location'] ?? null,
+                        'tax_payer_id' => $request['tax_payer_id'] ?? null,
+                        'created_by' => Auth::user()->creatorId(),
+                    ]
+                );
+
+                // if ($request->hasFile('document')) {
+                //     foreach ($request->document as $key => $document) {
+
+                //         $image_size = $request->file('document')[$key]->getSize();
+                //         $result = Utility::updateStorageLimit(\Auth::user()->creatorId(), $image_size);
+
+                //         if ($result == 1) {
+                //             $filenameWithExt = $request->file('document')[$key]->getClientOriginalName();
+                //             $filename        = pathinfo($filenameWithExt, PATHINFO_FILENAME);
+                //             $extension       = $request->file('document')[$key]->getClientOriginalExtension();
+                //             $fileNameToStore = $filename . '_' . time() . '.' . $extension;
+                //             $dir             = 'uploads/document/';
+
+                //             $image_path      = $dir . $fileNameToStore;
+
+                //             $path = \App\Models\Utility::upload_coustom_file($request, 'document', $fileNameToStore, $dir, $key, []);
+
+                //             if ($path['flag'] == 1) {
+                //                 $url = $path['url'];
+                //             } else {
+                //                 return redirect()->back()->with('error', __($path['msg']));
+                //             }
+                //             $employee_document = EmployeeDocument::create(
+                //                 [
+                //                     'employee_id' => $employee['employee_id'],
+                //                     'document_id' => $key,
+                //                     'document_value' => $path['url'],
+                //                     'created_by' => \Auth::user()->creatorId(),
+                //                 ]
+                //             );
+                //             $employee_document->save();
+                //         }
+                //     }
+                // }
+                // $setings = \App\Models\Utility::settings();
+                // if ($setings['new_employee'] == 1) {
+                //     $department = Department::find($request['department_id']);
+                //     $branch = Branch::find($request['branch_id']);
+                //     $designation = Designation::find($request['designation_id']);
+                //     $uArr = [
+                //         'employee_email' => $user->email,
+                //         'employee_password' => $request->password,
+                //         'employee_name' => $request['name'],
+                //         'employee_branch' => !empty($branch->name) ? $branch->name : '',
+                //         'employee_department' => !empty($department->name) ? $department->name : '',
+                //         'employee_designation' => !empty($designation->name) ? $designation->name : '',
+                //     ];
+                //     $resp = \App\Models\Utility::sendEmailTemplate('new_employee', [$user->id => $user->email], $uArr);
+
+                DB::commit();
+                return response()->json([
+                    'status' => true,
+                    'message' => __('Employee successfully created.'),
+                ], 201);
+            } catch (Exception $e) {
+                DB::rollBack();
+                return response()->json([
+                    'status' => false,
+                    'message' => $e->getMessage(),
+                ], 500);
+            }
+        } else {
+            return response()->json([
+                'status' => false,
+                'message' => __('Permission denied.')
+            ], 403);
+        }
+    }
+
+    public function show($id)
+    {
+        if (Auth::user()->can('Show Employee')) {
+            try {
+                $empId = $id;
+                // $empId        = \Illuminate\Support\Facades\Crypt::decrypt($id);
+            } catch (\RuntimeException $e) {
+                return response()->json([
+                    'status'    => false,
+                    'message' => __('Employee not avaliable.')
+                ], 404);
+            }
+            // $documents    = Document::where('created_by', \Auth::user()->creatorId())->get();
+            $branches     = Branch::where('created_by', Auth::user()->creatorId())->get()->pluck('name', 'id');
+            $departments  = Department::where('created_by', Auth::user()->creatorId())->get()->pluck('name', 'id');
+            $designations = Designation::where('created_by', Auth::user()->creatorId())->get()->pluck('name', 'id');
+            $employee = Employee::where('id', '=', $empId)->orWhere('user_id', '=', $empId)->where('created_by', Auth::user()->creatorId())->first();
+            // $employee     = Employee::find($empId);
+            $employeeId  = Auth::user()->employeeIdFormat($employee->employee_id);
+            // $empId        = Crypt::decrypt($id);
+
+            //     $employee     = Employee::find($empId);
+            // $branch= Branch::where('created_by', \Auth::user()->creatorId())->get()->pluck('name', 'id');
+
+            // return view('employee.show', compact('employee', 'employeesId', 'branches', 'departments', 'designations', 'documents'));
+
+            return response()->json([
+                'status'    => true,
+                'message'   => 'Successfully retrieved data',
+                'data'      => [
+                    'employee'  => $employee,
+                    'employeeId'  => $employeeId,
+                    'branches'  => $branches,
+                    'departments'  => $departments,
+                    'designations'  => $designations,
                 ]
-            );
-            $user->save();
-            $user->assignRole('Employee');
-
-            // } else {
-            //     return redirect()->back()->with('error', __('Your employee limit is over, Please upgrade plan.'));
-            // }
-
-
-            // if (!empty($request->document) && !is_null($request->document)) {
-            //     $document_implode = implode(',', array_keys($request->document));
-            // } else {
-            //     $document_implode = null;
-            // }
-
-
-            $employee = Employee::create(
-                [
-                    'user_id' => $user->id,
-                    'name' => $request['name'],
-                    'dob' => $request['dob'],
-                    'gender' => $request['gender'],
-                    'phone' => $request['phone'],
-                    'address' => $request['address'],
-                    'email' => $request['email'],
-                    'password' => Hash::make($request['password']),
-                    'employee_id' => $this->employeeNumber(),
-                    // 'biometric_emp_id' => !empty($request['biometric_emp_id']) ? $request['biometric_emp_id'] : '',
-                    'branch_id' => $request['branch_id'],
-                    'department_id' => $request['department_id'],
-                    'designation_id' => $request['designation_id'],
-                    'company_doj' => $request['company_doj'],
-                    // 'documents' => $document_implode,
-                    'account_holder_name' => $request['account_holder_name'],
-                    'account_number' => $request['account_number'],
-                    'bank_name' => $request['bank_name'],
-                    'bank_identifier_code' => $request['bank_identifier_code'],
-                    'branch_location' => $request['branch_location'],
-                    'tax_payer_id' => $request['tax_payer_id'],
-                    'created_by' => Auth::user()->creatorId(),
-                ]
-            );
-
-            // if ($request->hasFile('document')) {
-            //     foreach ($request->document as $key => $document) {
-
-            //         $image_size = $request->file('document')[$key]->getSize();
-            //         $result = Utility::updateStorageLimit(\Auth::user()->creatorId(), $image_size);
-
-            //         if ($result == 1) {
-            //             $filenameWithExt = $request->file('document')[$key]->getClientOriginalName();
-            //             $filename        = pathinfo($filenameWithExt, PATHINFO_FILENAME);
-            //             $extension       = $request->file('document')[$key]->getClientOriginalExtension();
-            //             $fileNameToStore = $filename . '_' . time() . '.' . $extension;
-            //             $dir             = 'uploads/document/';
-
-            //             $image_path      = $dir . $fileNameToStore;
-
-            //             $path = \App\Models\Utility::upload_coustom_file($request, 'document', $fileNameToStore, $dir, $key, []);
-
-            //             if ($path['flag'] == 1) {
-            //                 $url = $path['url'];
-            //             } else {
-            //                 return redirect()->back()->with('error', __($path['msg']));
-            //             }
-            //             $employee_document = EmployeeDocument::create(
-            //                 [
-            //                     'employee_id' => $employee['employee_id'],
-            //                     'document_id' => $key,
-            //                     'document_value' => $path['url'],
-            //                     'created_by' => \Auth::user()->creatorId(),
-            //                 ]
-            //             );
-            //             $employee_document->save();
-            //         }
-            //     }
-            // }
-            // $setings = \App\Models\Utility::settings();
-            // if ($setings['new_employee'] == 1) {
-            //     $department = Department::find($request['department_id']);
-            //     $branch = Branch::find($request['branch_id']);
-            //     $designation = Designation::find($request['designation_id']);
-            //     $uArr = [
-            //         'employee_email' => $user->email,
-            //         'employee_password' => $request->password,
-            //         'employee_name' => $request['name'],
-            //         'employee_branch' => !empty($branch->name) ? $branch->name : '',
-            //         'employee_department' => !empty($department->name) ? $department->name : '',
-            //         'employee_designation' => !empty($designation->name) ? $designation->name : '',
-            //     ];
-            //     $resp = \App\Models\Utility::sendEmailTemplate('new_employee', [$user->id => $user->email], $uArr);
-
-            //     return redirect()->route('employee.index')->with('success', __('Employee successfully created.') . ((!empty($resp) && $resp['is_success'] == false && !empty($resp['error'])) ? '<br> <span class="text-danger">' . $resp['error'] . '</span>' : '') . ((isset($result) && $result != 1) ? '<br> <span class="text-danger">' . $result . '</span>' : ''));
-            // }
-            return response()->json(['message' => __('Employee successfully created.')], 201);
+            ]);
         } else {
             return response()->json(['message' => __('Permission denied.')], 403);
         }
@@ -380,12 +446,15 @@ class EmployeeController extends Controller
             //     }
             // }
 
-            return redirect()->route('employee.index')->with('success', 'Employee successfully deleted.');
             return response()->json([
+                'status'    => true,
                 'message'   => __('Employee successfully deleted.')
             ], 200);
         } else {
-            return response()->json(['message' => __('Permission denied.')], 403);
+            return response()->json([
+                'status'    => false,
+                'message' => __('Permission denied.')
+            ], 403);
         }
     }
 

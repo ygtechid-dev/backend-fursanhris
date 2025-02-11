@@ -81,16 +81,16 @@ class Employee extends Model
 
     public function branch()
     {
-        return $this->belongsTo('App\Models\Branch', 'id', 'branch_id');
+        return $this->belongsTo('App\Models\Branch', 'branch_id');
     }
 
     public function department()
     {
-        return $this->belongsTo('App\Models\Department', 'id', 'department_id');
+        return $this->belongsTo('App\Models\Department', 'department_id');
     }
 
     public function designation()
     {
-        return $this->belongsTo('App\Models\Designation', 'id', 'designation_id');
+        return $this->belongsTo('App\Models\Designation', 'designation_id');
     }
 }

@@ -21,17 +21,24 @@ class Overtime extends Model
         'status',
         'approved_by',
         'approved_at',
+        'rejected_by',
+        'rejected_at',
         'rejection_reason'
     ];
 
     public function employee()
     {
-        return $this->belongsTo('App\Models\Employee', 'employee_id')->first();
+        return $this->belongsTo('App\Models\Employee', 'employee_id');
     }
 
     public function approver()
     {
-        return $this->belongsTo('App\Models\User', 'approved_by');
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function rejecter()
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
     }
 
 

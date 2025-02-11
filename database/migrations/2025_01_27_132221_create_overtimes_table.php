@@ -29,7 +29,15 @@ return new class extends Migration
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->integer('approved_by')->nullable();
             $table->timestamp('approved_at')->nullable();
+            $table->integer('rejected_by')->nullable();
+            $table->timestamp('rejected_at')->nullable();
             $table->text('rejection_reason')->nullable();
+
+
+            // $table->foreign('rejected_by')
+            //     ->references('id')
+            //     ->on('users')
+            //     ->onDelete('set null');
         });
     }
 

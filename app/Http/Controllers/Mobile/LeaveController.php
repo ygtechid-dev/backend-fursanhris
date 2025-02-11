@@ -15,11 +15,49 @@ use Illuminate\Support\Facades\Validator;
 
 class LeaveController extends Controller
 {
+
+    private function formatLeaveResponse($leave, $companyTz)
+    {
+        return [
+            'id' => $leave->id,
+            'employee_id' => $leave->employee_id,
+            'leave_type_id' => $leave->leave_type_id,
+            'applied_on' => $leave->applied_on,
+            'start_date' => $leave->start_date,
+            'end_date' => $leave->end_date,
+            'total_leave_days' => $leave->total_leave_days,
+            'leave_reason' => $leave->leave_reason,
+            'emergency_contact' => $leave->emergency_contact,
+            'remark' => $leave->remark,
+            'status' => $leave->status,
+            'approved_at' => Utility::formatDateTimeToCompanyTz($leave->approved_at, $companyTz)?->format('Y-m-d H:i:s'),
+            'rejected_at' => Utility::formatDateTimeToCompanyTz($leave->rejected_at, $companyTz)?->format('Y-m-d H:i:s'),
+            'created_at' => $leave->created_at,
+            'updated_at' => $leave->updated_at,
+            'employee' => $leave->employee,
+            'leave_type' => $leave->leaveType,
+            'approver' => $leave->approver,
+            'rejecter' => $leave->rejecter,
+        ];
+    }
+
     public function index()
     {
         if (Auth::user()->can('Manage Leave')) {
-            $user     = User::with('employee')->where('id', Auth::user()->id)->first();
-            $leaves = Leave::where('employee_id', '=', $user?->employee->id)->get();
+            $user     = User::with('employee')
+                ->where('id', Auth::user()->id)->first();
+
+            $companyTz = Utility::getCompanySchedule($user->creatorId())['company_timezone'];
+            $leaves = Leave::with([
+                'employee',
+                'leaveType',
+                'approver',
+                'rejecter'
+            ])
+                ->where('employee_id', '=', $user?->employee->id)->get()
+                ->map(function ($leave) use ($companyTz) {
+                    return $this->formatLeaveResponse($leave, $companyTz);
+                });;
 
             return response()->json([
                 'status' => true,
@@ -37,145 +75,7 @@ class LeaveController extends Controller
         }
     }
 
-    // public function store(Request $request)
-    // {
-    //     if (!Auth::user()->can('Create Leave')) {
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => 'Permission denied.',
-    //         ], 403);
-    //     }
 
-    //     $validator = Validator::make(
-    //         $request->all(),
-    //         [
-    //             'employee_id' => 'required',
-    //             'leave_type_id' => 'required',
-    //             'start_date' => 'required',
-    //             'end_date' => 'required',
-    //             'leave_reason' => 'required',
-    //             'emergency_contact' => 'nullable',
-    //             'remark' => 'nullable',
-    //         ]
-    //     );
-
-    //     if ($validator->fails()) {
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => $validator->getMessageBag()->first(),
-    //             'errors' => $validator->errors(),
-    //         ], 422);
-    //     }
-    //     $user = Auth::user();
-
-    //     if (!$user || !$user->employee) {
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => 'Employee not found',
-    //         ], 404);
-    //     }
-
-    //     $leave_type = LeaveType::find($request->leave_type_id);
-    //     if (!$leave_type) {
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => 'Leave type not found.',
-    //         ], 404);
-    //     }
-    //     // dd(Utility::checkLeaveRemaining($request->employee_id, $leave_type->id));
-    //     $startDate = new \DateTime($request->start_date);
-    //     $endDate = new \DateTime($request->end_date);
-    //     $endDate->add(new \DateInterval('P1D'));
-    //     $date = Utility::AnnualLeaveCycle();
-
-    //     // Calculate leave days
-    //     $leaves_used = Leave::where('employee_id', $user->employee->id)
-    //         ->where('leave_type_id', $leave_type->id)
-    //         ->where('status', 'approved')
-    //         ->whereBetween('created_at', [$date['start_date'], $date['end_date']])
-    //         ->sum('total_leave_days');
-
-    //     $leaves_pending = Leave::where('employee_id', $user->employee->id)
-    //         ->where('leave_type_id', $leave_type->id)
-    //         ->where('status', 'pending')
-    //         ->whereBetween('created_at', [$date['start_date'], $date['end_date']])
-    //         ->sum('total_leave_days');
-    //     $leaves_pending = intval($leaves_pending);
-
-    //     $total_leave_days = !empty($startDate->diff($endDate)) ? $startDate->diff($endDate)->days : 0;
-    //     $remaining_leaves = $leave_type->days - $leaves_used;
-
-    //     // Check if eligible for leave
-    //     if ($total_leave_days > $remaining_leaves) {
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => 'You are not eligible for leave.',
-    //             'data' => [
-    //                 'requested_days' => $total_leave_days,
-    //                 'remaining_days' => $remaining_leaves,
-    //             ],
-    //         ], 400);
-    //     }
-
-    //     // Check pending leaves
-    //     dd($leaves_pending, $total_leave_days, $remaining_leaves);
-    //     if (!empty($leaves_pending) && $leaves_pending + $total_leave_days > $remaining_leaves) {
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => 'Multiple leave entry is pending.',
-    //             'data' => [
-    //                 'pending_days' => $leaves_pending,
-    //                 'requested_days' => $total_leave_days,
-    //                 'remaining_days' => $remaining_leaves,
-    //             ],
-    //         ], 400);
-    //     }
-
-    //     // Check if leave days are within allowed limit
-    //     if ($leave_type->days < $total_leave_days) {
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => "Leave type {$leave_type->title} provides maximum {$leave_type->days} days. Please ensure your selected days are within this limit.",
-    //             'data' => [
-    //                 'max_allowed_days' => $leave_type->days,
-    //                 'requested_days' => $total_leave_days,
-    //             ],
-    //         ], 400);
-    //     }
-    //     // Create leave request
-    //     try {
-    //         $leave = new Leave();
-    //         $leave->employee_id = $user->employee->id;
-    //         $leave->leave_type_id = $request->leave_type_id;
-    //         $leave->applied_on = date('Y-m-d');
-    //         $leave->start_date = $request->start_date;
-    //         $leave->end_date = $request->end_date;
-    //         $leave->total_leave_days = $total_leave_days;
-    //         $leave->leave_reason = $request->leave_reason;
-    //         $leave->emergency_contact = $request->emergency_contact;
-    //         $leave->remark = $request->remark;
-    //         $leave->status = 'pending';
-    //         $leave->created_by = Auth::user()->creatorId();
-    //         $leave->save();
-
-    //         return response()->json([
-    //             'status' => true,
-    //             'message' => 'Leave request created successfully.',
-    //             'data' => [
-    //                 'leave' => $leave,
-    //                 'leave_type' => $leave_type->title,
-    //                 'total_days' => $total_leave_days,
-    //                 'remaining_days' => $remaining_leaves - $total_leave_days,
-    //             ],
-    //         ], 201);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => 'Failed to create leave request.',
-    //             'error' => $e->getMessage(),
-    //         ], 500);
-    //     }
-    // }
 
     public function store(Request $request)
     {
@@ -293,7 +193,7 @@ class LeaveController extends Controller
 
         // Create leave request
         try {
-
+            $companyTz = Utility::getCompanySchedule($user->creatorId())['company_timezone'];
             $leave = Leave::create([
                 'employee_id' => $user->employee->id,
                 'leave_type_id' => $leave_type->id,
@@ -312,7 +212,7 @@ class LeaveController extends Controller
                 'status' => true,
                 'message' => 'Leave request created successfully.',
                 'data' => [
-                    'leave' => $leave,
+                    'leave' => $this->formatLeaveResponse($leave, $companyTz),
                     'leave_type' => $leave_type->title,
                     'total_days' => $total_leave_days,
                     'remaining_days' => $remaining_leaves - $total_leave_days,

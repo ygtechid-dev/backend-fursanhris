@@ -13,16 +13,24 @@ use Illuminate\Support\Facades\Validator;
 
 class DesignationController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         if (Auth::user()->can('Manage Designation')) {
 
-            $designations = Designation::where('created_by', '=', Auth::user()->creatorId())->with('department.branch')->get();
+            $designations = Designation::query()->where('created_by', '=', Auth::user()->creatorId())->with('department.branch');
+
+            if ($request->has('branch_id')) {
+                $designations->where('branch_id', $request->branch_id);
+            }
+
+            if ($request->has('department_id')) {
+                $designations->where('department_id', $request->department_id);
+            }
 
             return response()->json([
                 'status' => true,
                 'message' => 'User retrieved successfully',
-                'data' => $designations
+                'data' => $designations->get()
             ], 200);
         } else {
             return response()->json([

@@ -504,4 +504,15 @@ class AuthenticationController extends Controller
             'message' => 'Password reset successfully'
         ], 200);
     }
+
+    public function checkAuth()
+    {
+        return response()->json([
+            'status' => true,
+            'message' => 'Profile retrived successfully',
+            'data' => [
+                'user' => User::find(Auth::id()),
+            ]
+        ], 200);
+    }
 }

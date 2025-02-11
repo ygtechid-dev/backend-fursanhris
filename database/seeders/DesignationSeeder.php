@@ -19,10 +19,19 @@ class DesignationSeeder extends Seeder
             'name'        => 'Indonesia',
             'created_by'  => 2,
         ]);
+        Branch::create([
+            'name'        => 'Malaysia',
+            'created_by'  => 2,
+        ]);
 
         Department::create([
             'branch_id'   => 1,
             'name'        => 'Technology',
+            'created_by'  => 2,
+        ]);
+        Department::create([
+            'branch_id'   => 2,
+            'name'        => 'Finance',
             'created_by'  => 2,
         ]);
 
@@ -30,6 +39,12 @@ class DesignationSeeder extends Seeder
             'branch_id'   => 1,
             'department_id'   => 1,
             'name'        => 'Developers',
+            'created_by'  => 2,
+        ]);
+        Designation::create([
+            'branch_id'   => 2,
+            'department_id'   => 2,
+            'name'        => 'Office Boy',
             'created_by'  => 2,
         ]);
     }

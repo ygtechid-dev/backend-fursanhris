@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers;
 use App\Http\Controllers\AuthenticationController;
+use App\Http\Controllers\Controller;
 use App\Http\Controllers\Mobile;
 use App\Http\Middleware\CheckPlatformAccess;
 use Illuminate\Cache\Events\RetrievingKey;
@@ -35,9 +36,15 @@ Route::prefix('mobile')->group(function () {
 
 // Protected routes with Sanctum
 Route::middleware(['auth:sanctum'])->group(function () {
+    /** Check Profile */
+    Route::get('/me', [AuthenticationController::class, 'checkAuth']);
+
+
     /** Master */
-    Route::apiResource('leave-types', Controllers\LeaveTypeController::class);
+    Route::apiResource('branches', Controllers\BranchController::class);
+    Route::apiResource('departments', Controllers\DepartmentController::class);
     Route::apiResource('designations', Controllers\DesignationController::class);
+    Route::apiResource('leave-types', Controllers\LeaveTypeController::class);
 
     // Route untuk mobile
     Route::middleware(CheckPlatformAccess::class . ':mobile')->prefix('mobile')->group(function () {
@@ -55,6 +62,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/', [Mobile\OvertimeController::class, 'index']);
             Route::post('/submit-request', [Mobile\OvertimeController::class, 'store']);
         });
+
+        /** Attendance */
+        Route::prefix('attendance')->group(function () {
+            Route::get('{id}', [Mobile\AttendanceEmployeeController::class, 'getAttendanceDetail']);
+            Route::get('{id}/download', [Mobile\AttendanceEmployeeController::class, 'downloadAttendanceDetail']);
+            Route::get('/employee/{employee_id}', [Mobile\AttendanceEmployeeController::class, 'getEmployeeHistory']);
+            Route::post('/clock-in', [Mobile\AttendanceEmployeeController::class, 'attendance']);
+            Route::post('/clock-out', [Mobile\AttendanceEmployeeController::class, 'clockOut']);
+        });
     });
 
     // Route untuk web
@@ -62,6 +78,21 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Route::get('/users',  [Controllers\UserController::class, 'index']);
         Route::apiResource('users', Controllers\UserController::class);
         Route::apiResource('employees', Controllers\EmployeeController::class);
+
+        /** Leave */
+        Route::prefix('leaves')->group(function () {
+            Route::get('/', [Controllers\LeaveController::class, 'index']);
+            Route::post('/update-status/{id}', [Controllers\LeaveController::class, 'updateStatus']);
+        });
+
+        /** Leave */
+        Route::prefix('overtimes')->group(function () {
+            Route::get('/', [Controllers\OvertimeController::class, 'index']);
+            Route::post('/update-status/{id}', [Controllers\OvertimeController::class, 'updateStatus']);
+        });
+
+        Route::get('company-setting', [Controllers\SettingsController::class, 'fetchCompanySettings']);
+        Route::post('company-setting', [Controllers\SettingsController::class, 'saveCompanySettings']);
     });
 
     // Route umum (bisa diakses keduanya)
