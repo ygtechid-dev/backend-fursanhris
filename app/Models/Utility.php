@@ -478,12 +478,12 @@ class Utility extends Model
             "Delete Contract Type",
         ];
 
-        $hr_permission = Role::where('name', 'hr')->where('created_by', $company_id)->where('guard_name', 'sanctum')->first();
+        $hr_permission = Role::where('name', 'hr')->where('created_by', $company_id)->where('guard_name', 'web')->first();
 
         if (empty($hr_permission)) {
             $hr_permission                   = new Role();
             $hr_permission->name             = 'hr';
-            $hr_permission->guard_name       = 'sanctum';
+            $hr_permission->guard_name       = 'web';
             $hr_permission->created_by       = $company_id;
             $hr_permission->save();
             foreach ($hr_role_permission as $permission_s) {
@@ -542,12 +542,12 @@ class Utility extends Model
             "Delete Attachment",
         ];
 
-        $employee_permission = Role::where('name', 'employee')->where('created_by', $company_id)->where('guard_name', 'sanctum')->first();
+        $employee_permission = Role::where('name', 'employee')->where('created_by', $company_id)->where('guard_name', 'web')->first();
 
         if (empty($employee_permission)) {
             $employee_permission                   = new Role();
             $employee_permission->name             = 'employee';
-            $employee_permission->guard_name       = 'sanctum';
+            $employee_permission->guard_name       = 'web';
             $employee_permission->created_by       = $company_id;
             $employee_permission->save();
             foreach ($employee_role_permission as $permission_s) {

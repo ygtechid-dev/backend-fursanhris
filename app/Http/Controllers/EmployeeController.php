@@ -398,6 +398,7 @@ class EmployeeController extends Controller
                 // return redirect()->route('employee.index')->with('success', 'Employee successfully updated.');
 
                 return response()->json([
+                    'status'    => true,
                     'message'   => __('Employee successfully updated.') . ((isset($result) && $result != 1) ? '<br> <span class="text-danger">' . $result . '</span>' : '')
                 ], 200);
             } else {
@@ -405,6 +406,7 @@ class EmployeeController extends Controller
 
 
                 return response()->json([
+                    'status'    => true,
                     'message'   => __('Employee successfully updated.') . ((isset($result) && $result != 1) ? '<br> <span class="text-danger">' . $result . '</span>' : '')
                 ], 200);
             }

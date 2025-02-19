@@ -31,12 +31,14 @@ class LeaveController extends Controller
             'status' => $leave->status,
             'approved_at' => Utility::formatDateTimeToCompanyTz($leave->approved_at, $companyTz)?->format('Y-m-d H:i:s'),
             'rejected_at' => Utility::formatDateTimeToCompanyTz($leave->rejected_at, $companyTz)?->format('Y-m-d H:i:s'),
+            'created_by' => $leave->created_by,
             'created_at' => $leave->created_at,
             'updated_at' => $leave->updated_at,
             'employee' => $leave->employee,
             'leave_type' => $leave->leaveType,
             'approver' => $leave->approver,
             'rejecter' => $leave->rejecter,
+
         ];
     }
     public function index()

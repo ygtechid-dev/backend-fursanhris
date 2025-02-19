@@ -19,7 +19,7 @@ class UserController extends Controller
             $user = Auth::user();
             if (Auth::user()->type == 'super admin') {
                 $users = User::where('created_by', '=', $user->creatorId())->where('type', '=', 'company')->get();
-                $CountUser = User::where('created_by')->get();
+                // $CountUser = User::where('created_by')->get();
             } else {
                 $users = User::where('created_by', '=', $user->creatorId())->where('type', '!=', 'employee')->get();
             }
@@ -29,7 +29,34 @@ class UserController extends Controller
                 'data'      => $users
             ]);
         } else {
-            return response()->json(['message' => __('Permission denied.')], 403);
+            return response()->json(
+                [
+                    'status'    => false,
+                    'message' => __('Permission denied.')
+                ],
+                403
+            );
+        }
+    }
+
+    public function getCompanies()
+    {
+        if (Auth::user()->can('Manage User')) {
+            $user = Auth::user();
+            $companies = User::where('created_by', '=', $user->creatorId())->where('type', '=', 'company')->get();
+
+            return response()->json([
+                'message'   => 'Successfully retrieved data',
+                'data'      => $companies
+            ]);
+        } else {
+            return response()->json(
+                [
+                    'status'    => false,
+                    'message' => __('Permission denied.')
+                ],
+                403
+            );
         }
     }
 
@@ -56,6 +83,7 @@ class UserController extends Controller
                 $messages = $validator->getMessageBag();
 
                 return response()->json([
+                    'status'    => false,
                     'message'   => $messages->first()
                 ], 400);
             }
@@ -69,6 +97,7 @@ class UserController extends Controller
                 if ($validator->fails()) {
                     // return redirect()->back()->with('error', $validator->errors()->first());
                     return response()->json([
+                        'status'    => false,
                         'message'   => $validator->errors()->first()
                     ], 400);
                 }
@@ -86,9 +115,11 @@ class UserController extends Controller
                         'first_name' => $request['first_name'],
                         'last_name' => $request['last_name'],
                         'email' => $request['email'],
-                        'is_login_enable' => !empty($request->password_switch) && $request->password_switch == 'on' ? 1 : 0,
+                        // 'is_login_enable' => !empty($request->password_switch) && $request->password_switch == 'on' ? 1 : 0,
+                        'is_login_enable' => 1,
                         'password' => !empty($userpassword) ? Hash::make($userpassword) : null,
                         'type' => 'company',
+                        'avatar' => '',
                         'company_id' => Utility::generateCompanyId(),
                         // 'plan' => $plan = Plan::where('price', '<=', 0)->first()->id,
                         // 'lang' => !empty($default_language) ? $default_language->value : 'en',
@@ -120,16 +151,18 @@ class UserController extends Controller
 
                 // if ($total_user < $plan->max_users || $plan->max_users == -1) {
 
-                $role_r = Role::findById($request->role);
+                $role_r = Role::findById($request->type, 'web');
                 $date = date("Y-m-d H:i:s");
                 $user   = User::create(
                     [
                         'first_name' => $request['first_name'],
                         'last_name' => $request['last_name'],
                         'email' => $request['email'],
-                        'is_login_enable' => !empty($request->password_switch) && $request->password_switch == 'on' ? 1 : 0,
+                        // 'is_login_enable' => !empty($request->password_switch) && $request->password_switch == 'on' ? 1 : 0,
+                        'is_login_enable' => 1,
                         'password' => !empty($userpassword) ? Hash::make($userpassword) : null,
                         'type' => $role_r->name,
+                        'avatar' => '',
                         // 'lang' => !empty($default_language) ? $default_language->value : 'en',
                         'lang' => 'en',
                         'created_by' => Auth::user()->creatorId(),
@@ -157,10 +190,14 @@ class UserController extends Controller
             // }
 
             return response()->json([
+                'status'    => true,
                 'message'   => 'User successfully created.'
             ], 201);
         } else {
-            return response()->json(['message' => __('Permission denied.')], 403);
+            return response()->json([
+                'status'    => false,
+                'message' => __('Permission denied.')
+            ], 403);
         }
     }
 
@@ -169,6 +206,7 @@ class UserController extends Controller
         $userDetail = Auth::user();
 
         return response()->json([
+            'status'    => true,
             'message'   => 'Successfully retrieved user',
             'data'      => $userDetail
         ]);
@@ -176,40 +214,51 @@ class UserController extends Controller
 
     public function update(Request $request, $id)
     {
-        $validator = Validator::make(
-            $request->all(),
-            [
-                'first_name' => 'required',
-                'last_name' => 'required',
-                'email' => 'unique:users,email,' . $id,
-            ]
-        );
+        // Define base validation rules
+        $validationRules = [
+            'first_name' => 'required',
+            'last_name' => 'required',
+            'email' => 'unique:users,email,' . $id,
+        ];
+
+        // Add password validation only if password field is present
+        if ($request->has('password') && !empty($request->password)) {
+            $validationRules['password'] = 'min:8';
+        }
+
+        $validator = Validator::make($request->all(), $validationRules);
+
         if ($validator->fails()) {
             $messages = $validator->getMessageBag();
-
             return response()->json([
-                'message'   => $messages->first()
+                'status' => false,
+                'message' => $messages->first()
             ], 400);
         }
 
+        $user = User::findOrFail($id);
+        $input = $request->all();
+
+        // Handle password update if provided
+        if ($request->has('password') && !empty($request->password)) {
+            $input['password'] = bcrypt($request->password);
+        } else {
+            // Remove password from input if not provided
+            unset($input['password']);
+        }
+
         if (Auth::user()->type == 'super admin') {
-            $user  = User::findOrFail($id);
-            $input = $request->all();
             $user->fill($input)->save();
         } else {
-            $user = User::findOrFail($id);
-
-            $role          = Role::findById($request->role);
-            $input         = $request->all();
+            $role = Role::findById($request->type, 'web');
             $input['type'] = $role->name;
             $user->fill($input)->save();
-
             $user->assignRole($role);
         }
 
-        // return redirect()->route('user.index')->with('success', 'User successfully updated.');
         return response()->json([
-            'message'   => 'User successfully updated.'
+            'status' => true,
+            'message' => 'User successfully updated.'
         ], 200);
     }
 
@@ -217,15 +266,21 @@ class UserController extends Controller
     {
         if (Auth::user()->can('Delete User')) {
             $user = User::findOrFail($id);
+
             $sub_employee = Employee::where('created_by', $user->id)->delete();
+
             $sub_user = User::where('created_by', $user->id)->delete();
             $user->delete();
 
             return response()->json([
+                'status'    => true,
                 'message'   => 'User successfully deleted.'
-            ], 201);
+            ], 200);
         } else {
-            return response()->json(['message' => __('Permission denied.')], 403);
+            return response()->json([
+                'status'    => false,
+                'message' => __('Permission denied.')
+            ], 403);
         }
     }
 }

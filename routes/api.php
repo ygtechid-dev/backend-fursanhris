@@ -77,7 +77,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::middleware(CheckPlatformAccess::class . ':web')->prefix('web')->group(function () {
         // Route::get('/users',  [Controllers\UserController::class, 'index']);
         Route::apiResource('users', Controllers\UserController::class);
+        Route::apiResource('roles', Controllers\RoleController::class);
         Route::apiResource('employees', Controllers\EmployeeController::class);
+        Route::apiResource('attendance-employee', Controllers\AttendanceEmployeeController::class);
+
+        Route::get('/companies', [Controllers\UserController::class, 'getCompanies']);
 
         /** Leave */
         Route::prefix('leaves')->group(function () {
@@ -85,7 +89,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/update-status/{id}', [Controllers\LeaveController::class, 'updateStatus']);
         });
 
-        /** Leave */
+        /** Overtimes */
         Route::prefix('overtimes')->group(function () {
             Route::get('/', [Controllers\OvertimeController::class, 'index']);
             Route::post('/update-status/{id}', [Controllers\OvertimeController::class, 'updateStatus']);

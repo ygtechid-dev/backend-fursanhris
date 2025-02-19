@@ -27,6 +27,7 @@ class OvertimeController extends Controller
             'approved_at' => Utility::formatDateTimeToCompanyTz($overtime->approved_at, $companyTz)?->format('Y-m-d H:i:s'),
             'rejected_at' => Utility::formatDateTimeToCompanyTz($overtime->rejected_at, $companyTz)?->format('Y-m-d H:i:s'),
             'rejection_reason' => $overtime->rejection_reason,
+            'created_by' => $overtime->created_by,
             'created_at' => $overtime->created_at,
             'updated_at' => $overtime->updated_at,
             'employee' => $overtime->employee,
