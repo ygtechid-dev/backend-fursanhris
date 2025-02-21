@@ -78,11 +78,12 @@ class OvertimeController extends Controller
             );
 
             if ($validator->fails()) {
+                $messages = $validator->getMessageBag();
+
                 return response()->json([
-                    'status' => false,
-                    'message' => $validator->getMessageBag()->first(),
-                    'errors' => $validator->errors(),
-                ], 422);
+                    'status'   => false,
+                    'message'   => $messages->first()
+                ], 400);
             }
 
             $user = Auth::user();

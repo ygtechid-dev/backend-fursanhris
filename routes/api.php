@@ -39,7 +39,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     /** Check Profile */
     Route::get('/me', [AuthenticationController::class, 'checkAuth']);
 
-
     /** Master */
     Route::apiResource('branches', Controllers\BranchController::class);
     Route::apiResource('departments', Controllers\DepartmentController::class);

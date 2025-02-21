@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Department;
 use App\Models\Designation;
+use App\Models\Employee;
 use App\Models\User;
 use Exception;
 use Illuminate\Http\Request;
@@ -52,11 +53,12 @@ class DesignationController extends Controller
                 ]
             );
             if ($validator->fails()) {
+                $messages = $validator->getMessageBag();
+
                 return response()->json([
-                    'status' => false,
-                    'message' => $validator->getMessageBag()->first(),
-                    'errors' => $validator->errors(),
-                ], 422);
+                    'status'   => false,
+                    'message'   => $messages->first()
+                ], 400);
             }
 
             try {
@@ -77,9 +79,7 @@ class DesignationController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Designation  successfully created.',
-                'data' => [
-                    'designation' => $designation,
-                ],
+                'data' => $designation,
             ], 201);
         } else {
             return response()->json([
@@ -102,11 +102,12 @@ class DesignationController extends Controller
                     ]
                 );
                 if ($validator->fails()) {
+                    $messages = $validator->getMessageBag();
+
                     return response()->json([
-                        'status' => false,
-                        'message' => $validator->getMessageBag()->first(),
-                        'errors' => $validator->errors(),
-                    ], 422);
+                        'status'   => false,
+                        'message'   => $messages->first()
+                    ], 400);
                 }
 
                 try {
@@ -123,9 +124,7 @@ class DesignationController extends Controller
                 return response()->json([
                     'status' => true,
                     'message' => 'Designation  successfully updated.',
-                    'data' => [
-                        'designation' => $designation,
-                    ],
+                    'data' => $designation,
                 ], 201);
             } else {
                 return response()->json([
@@ -149,12 +148,21 @@ class DesignationController extends Controller
                 if ($designation->created_by == Auth::user()->creatorId()) {
                     $designation->delete();
 
-                    return redirect()->route('designation.index')->with('success', __('Designation successfully deleted.'));
+                    return response()->json([
+                        'status' => true,
+                        'message' => 'Designation successfully deleted.',
+                    ], 200);
                 } else {
-                    return redirect()->back()->with('error', __('Permission denied.'));
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Permission denied.',
+                    ], 403);
                 }
             } else {
-                return redirect()->route('designation.index')->with('error', __('This designation has employees. Please remove the employee from this designation.'));
+                return response()->json([
+                    'status' => false,
+                    'message' => 'This designation has employees. Please remove the employee from this designation.',
+                ], 403);
             }
         } else {
             return response()->json([

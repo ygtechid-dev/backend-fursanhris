@@ -83,7 +83,7 @@ class UserController extends Controller
                 $messages = $validator->getMessageBag();
 
                 return response()->json([
-                    'status'    => false,
+                    'status'   => false,
                     'message'   => $messages->first()
                 ], 400);
             }
@@ -230,9 +230,10 @@ class UserController extends Controller
 
         if ($validator->fails()) {
             $messages = $validator->getMessageBag();
+
             return response()->json([
-                'status' => false,
-                'message' => $messages->first()
+                'status'   => false,
+                'message'   => $messages->first()
             ], 400);
         }
 

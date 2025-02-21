@@ -73,6 +73,7 @@ class EmployeeController extends Controller
                 $messages = $validator->getMessageBag();
 
                 return response()->json([
+                    'status'   => false,
                     'message'   => $messages->first()
                 ], 400);
             }
@@ -321,6 +322,7 @@ class EmployeeController extends Controller
                 $messages = $validator->getMessageBag();
 
                 return response()->json([
+                    'status'   => false,
                     'message'   => $messages->first()
                 ], 400);
             }
@@ -411,7 +413,10 @@ class EmployeeController extends Controller
                 ], 200);
             }
         } else {
-            return response()->json(['message' => __('Permission denied.')], 403);
+            return response()->json([
+                'status'    => false,
+                'message' => __('Permission denied.')
+            ], 403);
         }
     }
 
