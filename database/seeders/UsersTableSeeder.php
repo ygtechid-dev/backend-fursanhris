@@ -1874,6 +1874,90 @@ class UsersTableSeeder extends Seeder
                 "created_at" => date('Y-m-d H:i:s'),
                 "updated_at" => date('Y-m-d H:i:s'),
             ],
+            [
+                "name" => "Manage Reimbursement",
+                "guard_name" => "web",
+                "created_at" => date('Y-m-d H:i:s'),
+                "updated_at" => date('Y-m-d H:i:s'),
+            ],
+            [
+                "name" => "Create Reimbursement",
+                "guard_name" => "web",
+                "created_at" => date('Y-m-d H:i:s'),
+                "updated_at" => date('Y-m-d H:i:s'),
+            ],
+            [
+                "name" => "Manage Project",
+                "guard_name" => "web",
+                "created_at" => date('Y-m-d H:i:s'),
+                "updated_at" => date('Y-m-d H:i:s'),
+            ],
+            [
+                "name" => "Create Project",
+                "guard_name" => "web",
+                "created_at" => date('Y-m-d H:i:s'),
+                "updated_at" => date('Y-m-d H:i:s'),
+            ],
+            [
+                "name" => "Delete Project",
+                "guard_name" => "web",
+                "created_at" => date('Y-m-d H:i:s'),
+                "updated_at" => date('Y-m-d H:i:s'),
+            ],
+            [
+                "name" => "Manage Task",
+                "guard_name" => "web",
+                "created_at" => date('Y-m-d H:i:s'),
+                "updated_at" => date('Y-m-d H:i:s'),
+            ],
+            [
+                "name" => "Manage All Task",
+                "guard_name" => "web",
+                "created_at" => date('Y-m-d H:i:s'),
+                "updated_at" => date('Y-m-d H:i:s'),
+            ],
+            [
+                "name" => "Create Task",
+                "guard_name" => "web",
+                "created_at" => date('Y-m-d H:i:s'),
+                "updated_at" => date('Y-m-d H:i:s'),
+            ],
+            [
+                "name" => "Edit Task",
+                "guard_name" => "web",
+                "created_at" => date('Y-m-d H:i:s'),
+                "updated_at" => date('Y-m-d H:i:s'),
+            ],
+            [
+                "name" => "Delete Task",
+                "guard_name" => "web",
+                "created_at" => date('Y-m-d H:i:s'),
+                "updated_at" => date('Y-m-d H:i:s'),
+            ],
+            [
+                "name" => "Manage Payslip",
+                "guard_name" => "web",
+                "created_at" => date('Y-m-d H:i:s'),
+                "updated_at" => date('Y-m-d H:i:s'),
+            ],
+            [
+                "name" => "Create Payslip",
+                "guard_name" => "web",
+                "created_at" => date('Y-m-d H:i:s'),
+                "updated_at" => date('Y-m-d H:i:s'),
+            ],
+            [
+                "name" => "Edit Payslip",
+                "guard_name" => "web",
+                "created_at" => date('Y-m-d H:i:s'),
+                "updated_at" => date('Y-m-d H:i:s'),
+            ],
+            [
+                "name" => "Delete Payslip",
+                "guard_name" => "web",
+                "created_at" => date('Y-m-d H:i:s'),
+                "updated_at" => date('Y-m-d H:i:s'),
+            ],
 
         ];
         Permission::insert($arrPermissions);
@@ -2233,6 +2317,17 @@ class UsersTableSeeder extends Seeder
             'Manage Biometric Attendance',
             'Biometric Attendance Synchronize',
             'Manage Overtime',
+            'Manage Reimbursement',
+            'Create Reimbursement',
+            'Manage Project',
+            'Create Project',
+            'Delete Project',
+            'Manage Task',
+            'Manage All Task',
+            'Create Task',
+            'Edit Task',
+            'Delete Task',
+            'Manage Payslip',
         ];
 
         $companyRole->givePermissionTo($companyPermissions);
@@ -2505,6 +2600,13 @@ class UsersTableSeeder extends Seeder
             'Show Zoom meeting',
             'Manage Biometric Attendance',
             'Biometric Attendance Synchronize',
+            'Manage Reimbursement',
+            'Create Reimbursement',
+            'Manage Task',
+            'Create Task',
+            'Edit Task',
+            'Delete Task',
+            'Manage Payslip',
         ];
 
         $hrRole->givePermissionTo($hrPermission);
@@ -2586,6 +2688,13 @@ class UsersTableSeeder extends Seeder
             'Manage Designation',
             'Manage Overtime',
             'Create Overtime',
+            'Manage Reimbursement',
+            'Create Reimbursement',
+            'Manage Project',
+            'Manage Task',
+            'Create Task',
+            'Edit Task',
+            'Manage Payslip',
         ];
 
         $employeeRole->givePermissionTo($employeePermission);
@@ -2660,6 +2769,8 @@ class UsersTableSeeder extends Seeder
                 'branch_location' => 'Jakarta',
                 // 'tax_payer_id' => $request['tax_payer_id'],
                 'created_by' => $company->id,
+                'salary_type' => 'monthly',
+                'salary' => '4000000',
             ]
         );
 

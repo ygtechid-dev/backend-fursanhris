@@ -14,18 +14,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        // User::create([
-        //     'first_name' => 'Test',
-        //     'last_name' => 'User',
-        //     'password' => Hash::make('password'),
-        //     'username' => 'tester',
-        //     'email' => 'test@example.com',
-        // ]);
-
         $this->call(UsersTableSeeder::class);
+        $this->call(EmployeeSeeder::class);
         $this->call(LeaveTypeSeeder::class);
         $this->call(DesignationSeeder::class);
+        $this->call(EventTableSeeder::class);
+        $this->call(ReimbursementSeeder::class);
+        $this->call(ProjectSeeder::class);
+        $this->call(TaskSeeder::class);
+        $this->call(AllowanceDeductionSeeder::class);
+        $this->call(PayslipSeeder::class);
+        $this->call(TerminateEmployeeSeeder::class);
     }
 }

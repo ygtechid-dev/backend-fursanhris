@@ -26,6 +26,7 @@ class Overtime extends Model
         'rejection_reason'
     ];
 
+
     public function employee()
     {
         return $this->belongsTo('App\Models\Employee', 'employee_id');

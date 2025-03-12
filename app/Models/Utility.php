@@ -753,4 +753,9 @@ class Utility extends Model
         }
         return Carbon::parse($dateTime)->setTimezone($companyTz);
     }
+
+    public static function formatText($text)
+    {
+        return str_replace('_', ' ', ucwords(str_replace('_', ' ', $text)));
+    }
 }

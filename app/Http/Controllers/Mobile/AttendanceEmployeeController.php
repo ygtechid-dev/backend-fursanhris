@@ -173,11 +173,11 @@ class AttendanceEmployeeController extends Controller
 
             // Format photo URLs
             $clockInPhotoUrl = $attendance->clock_in_photo
-                ? asset('storage/' . $attendance->clock_in_photo)
+                ? $attendance->clock_in_photo
                 : null;
 
             $clockOutPhotoUrl = $attendance->clock_out_photo
-                ? asset('storage/' . $attendance->clock_out_photo)
+                ? $attendance->clock_out_photo
                 : null;
 
             $attendanceDetail = [
@@ -325,7 +325,7 @@ class AttendanceEmployeeController extends Controller
                 'clock_in_latitude' => $request->latitude,
                 'clock_in_longitude' => $request->longitude,
                 'clock_in_location' => $request->location,
-                'clock_in_photo' => $photoPath,
+                'clock_in_photo' => asset('storage/' . $photoPath),
                 'clock_in_notes' => $request->notes
             ];
 
@@ -435,7 +435,7 @@ class AttendanceEmployeeController extends Controller
                 'clock_out_latitude' => $request->latitude,
                 'clock_out_longitude' => $request->longitude,
                 'clock_out_location' => $request->location,
-                'clock_out_photo' => $photoPath,
+                'clock_out_photo' => asset('storage/' . $photoPath),
                 'clock_out_notes' => $request->notes,
                 'timezone' => $companyTz
             ]);

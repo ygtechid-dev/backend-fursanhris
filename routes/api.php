@@ -26,7 +26,6 @@ use Illuminate\Cache\Events\RetrievingKey;
 Route::post('/login', [Controllers\AuthenticationController::class, 'login'])
     ->name('login');
 
-
 Route::prefix('mobile')->group(function () {
     Route::post('/sign-up', [AuthenticationController::class, 'registerMobile']);
     Route::post('/forgot-password', [AuthenticationController::class, 'forgotPassword']);
@@ -54,6 +53,39 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/', [Mobile\LeaveController::class, 'index']);
             Route::post('/submit-request', [Mobile\LeaveController::class, 'store']);
             Route::get('/check-remaining-leave', [Mobile\LeaveController::class, 'checkRemainingLeave']);
+        });
+
+        /** Payslip */
+        Route::prefix('payslip')->group(function () {
+            Route::get('/', [Mobile\PayslipController::class, 'index']);
+            Route::get('{id}', [Mobile\PayslipController::class, 'show']);
+            Route::get('{id}/export-pdf', [Mobile\PayslipController::class, 'exportPdf']);
+        });
+
+        /** Project */
+        Route::prefix('projects')->group(function () {
+            Route::get('/', [Mobile\ProjectController::class, 'index']);
+
+            Route::get('all-task', [Mobile\TaskController::class, 'getAssignedTasks']);
+            Route::prefix('tasks')->group(function () {
+                Route::put('{taskId}/update-status', [Mobile\TaskController::class, 'updateTaskStatus']);
+                Route::put('create-task', [Mobile\TaskController::class, 'createOwnTask']);
+                Route::post('{taskId}/add-comment', [Mobile\TaskController::class, 'addComment']);
+                Route::post('{taskId}/add-attachment', [Mobile\TaskController::class, 'addAttachment']);
+                Route::get('{taskId}', [Mobile\TaskController::class, 'getTaskDetail']);
+            });
+        });
+
+        /** Events / Calendar */
+        Route::prefix('events')->group(function () {
+            Route::get('/', [Mobile\EventController::class, 'index']);
+        });
+
+        /** Reimbursements */
+        Route::prefix('reimbursements')->group(function () {
+            Route::get('/', [Mobile\ReimbursementController::class, 'index']);
+            Route::post('/', [Mobile\ReimbursementController::class, 'store']);
+            Route::get('/categories', [Mobile\ReimbursementController::class, 'getCategories']);
         });
 
         /** Overtime */
@@ -85,6 +117,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         /** Leave */
         Route::prefix('leaves')->group(function () {
             Route::get('/', [Controllers\LeaveController::class, 'index']);
+            Route::post('/', [Controllers\LeaveController::class, 'store']);
+            Route::put('/{id}', [Controllers\LeaveController::class, 'update']);
+            Route::delete('/{id}', [Controllers\LeaveController::class, 'destroy']);
             Route::post('/update-status/{id}', [Controllers\LeaveController::class, 'updateStatus']);
         });
 

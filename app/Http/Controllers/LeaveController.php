@@ -41,6 +41,7 @@ class LeaveController extends Controller
 
         ];
     }
+
     public function index()
     {
         // anti ada logic untuk superadmin bisa akses semuanya
@@ -72,6 +73,374 @@ class LeaveController extends Controller
             ], 403);
         }
     }
+
+    public function store(Request $request)
+    {
+        if (!Auth::user()->can('Create Leave')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Permission denied.',
+            ], 403);
+        }
+
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'employee_id' => 'required',
+                'leave_type_id' => 'required',
+                'start_date' => 'required|date',
+                'end_date' => 'required|date|after_or_equal:start_date',
+                'leave_reason' => 'required',
+                'remark' => 'nullable',
+            ]
+        );
+
+        if ($validator->fails()) {
+            $messages = $validator->getMessageBag();
+
+            return response()->json([
+                'status'   => false,
+                'message'   => $messages->first()
+            ], 400);
+        }
+
+        $employee = Employee::with('user')->find($request->employee_id);
+        if (empty($employee)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Employee not found',
+            ], 404);
+        }
+
+        $leave_type = LeaveType::find($request->leave_type_id);
+        if (!$leave_type) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Leave type not found.',
+            ], 404);
+        }
+
+        $startDate = Carbon::parse($request->start_date);
+        $endDate = Carbon::parse($request->end_date)->addDay(); // Add one day to include the end date
+        $total_leave_days = $startDate->diffInDays($endDate);
+
+        // Check for overlapping leaves
+        $overlapping_leaves = Leave::where('employee_id', $employee->id)
+            ->where(function ($query) use ($startDate, $endDate) {
+                $query->whereBetween('start_date', [$startDate, $endDate])
+                    ->orWhereBetween('end_date', [$startDate, $endDate])
+                    ->orWhere(function ($q) use ($startDate, $endDate) {
+                        $q->where('start_date', '<=', $startDate)
+                            ->where('end_date', '>=', $endDate);
+                    });
+            })
+            ->whereIn('status', ['pending', 'approved'])
+            ->get();
+
+        if ($overlapping_leaves->count() > 0) {
+            return response()->json([
+                'status' => false,
+                'message' => 'You already have leave requests that overlap with these dates.',
+                'data' => [
+                    'conflicting_leaves' => $overlapping_leaves->map(function ($leave) {
+                        return [
+                            'start_date' => $leave->start_date,
+                            'end_date' => $leave->end_date,
+                            'status' => $leave->status,
+                            'leave_type' => $leave->leaveType->title
+                        ];
+                    })
+                ],
+            ], 400);
+        }
+
+        // Get annual leave cycle dates
+        $date = Utility::AnnualLeaveCycle();
+
+        // Calculate used leaves
+        $leaves_used = Leave::where('employee_id', $employee->id)
+            ->where('leave_type_id', $leave_type->id)
+            ->where('status', 'approved')
+            ->whereBetween('created_at', [$date['start_date'], $date['end_date']])
+            ->sum('total_leave_days');
+
+        // Calculate pending leaves
+        $leaves_pending = Leave::where('employee_id', $employee->id)
+            ->where('leave_type_id', $leave_type->id)
+            ->where('status', 'pending')
+            ->whereBetween('created_at', [$date['start_date'], $date['end_date']])
+            ->sum('total_leave_days');
+
+        $remaining_leaves = $leave_type->days - $leaves_used;
+
+        // Check total leave balance including pending leaves
+        $total_requested = $leaves_pending + $total_leave_days;
+        if ($total_requested > $remaining_leaves) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Insufficient leave balance when including pending requests.',
+                'data' => [
+                    'leave_balance' => $remaining_leaves,
+                    'pending_leaves' => $leaves_pending,
+                    'requested_days' => $total_leave_days,
+                    'total_requested' => $total_requested,
+                ],
+            ], 400);
+        }
+
+        // Create leave request
+        try {
+            $companyTz = Utility::getCompanySchedule($employee?->user->creatorId())['company_timezone'];
+            $leave = Leave::create([
+                'employee_id' => $employee->id,
+                'leave_type_id' => $leave_type->id,
+                'applied_on' => now()->format('Y-m-d'),
+                'start_date' => $request->start_date,
+                'end_date' => $request->end_date,
+                'total_leave_days' => $total_leave_days,
+                'leave_reason' => $request->leave_reason,
+                'emergency_contact' => $request->emergency_contact ?? null,
+                'remark' => $request->remark,
+                'status' => 'approved',
+                'created_by' => $employee?->user->creatorId(),
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Leave created successfully.',
+                'data' => [
+                    'leave' => $this->formatLeaveResponse($leave, $companyTz),
+                    'leave_type' => $leave_type->title,
+                    'total_days' => $total_leave_days,
+                    'remaining_days' => $remaining_leaves - $total_leave_days,
+                ],
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to create leave.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function update(Request $request, $id)
+    {
+        if (!Auth::user()->can('Edit Leave')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Permission denied.',
+            ], 403);
+        }
+
+        $leave = Leave::find($id);
+        if (!$leave) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Leave not found.',
+            ], 404);
+        }
+
+        // Check if the user is authorized to update this leave
+        // Only allow if it's their leave or they have admin privileges
+        // if ($leave->employee->user_id != Auth::id() && !Auth::user()->can('Manage All Leaves')) {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => 'You are not authorized to update this leave.',
+        //     ], 403);
+        // }
+
+        // If the leave is already approved or rejected, don't allow updates
+        if (in_array($leave->status, ['approved', 'rejected'])) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Cannot update leave that has already been ' . $leave->status . '.',
+            ], 400);
+        }
+
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'leave_type_id' => 'required',
+                'start_date' => 'required|date',
+                'end_date' => 'required|date|after_or_equal:start_date',
+                'leave_reason' => 'required',
+                'remark' => 'nullable',
+            ]
+        );
+
+        if ($validator->fails()) {
+            $messages = $validator->getMessageBag();
+
+            return response()->json([
+                'status'   => false,
+                'message'   => $messages->first()
+            ], 400);
+        }
+
+        $leave_type = LeaveType::find($request->leave_type_id);
+        if (!$leave_type) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Leave type not found.',
+            ], 404);
+        }
+
+        $startDate = Carbon::parse($request->start_date);
+        $endDate = Carbon::parse($request->end_date)->addDay(); // Add one day to include the end date
+        $total_leave_days = $startDate->diffInDays($endDate);
+
+        // Check for overlapping leaves (excluding the current leave being updated)
+        $overlapping_leaves = Leave::where('employee_id', $leave->employee_id)
+            ->where('id', '!=', $leave->id) // Exclude current leave
+            ->where(function ($query) use ($startDate, $endDate) {
+                $query->whereBetween('start_date', [$startDate, $endDate])
+                    ->orWhereBetween('end_date', [$startDate, $endDate])
+                    ->orWhere(function ($q) use ($startDate, $endDate) {
+                        $q->where('start_date', '<=', $startDate)
+                            ->where('end_date', '>=', $endDate);
+                    });
+            })
+            ->whereIn('status', ['pending', 'approved'])
+            ->get();
+
+        if ($overlapping_leaves->count() > 0) {
+            return response()->json([
+                'status' => false,
+                'message' => 'You already have leave requests that overlap with these dates.',
+                'data' => [
+                    'conflicting_leaves' => $overlapping_leaves->map(function ($leave) {
+                        return [
+                            'start_date' => $leave->start_date,
+                            'end_date' => $leave->end_date,
+                            'status' => $leave->status,
+                            'leave_type' => $leave->leaveType->title
+                        ];
+                    })
+                ],
+            ], 400);
+        }
+
+        // Get annual leave cycle dates
+        $date = Utility::AnnualLeaveCycle();
+
+        // Calculate used leaves (excluding current leave if it was approved)
+        $leaves_used = Leave::where('employee_id', $leave->employee_id)
+            ->where('leave_type_id', $leave_type->id)
+            ->where('status', 'approved')
+            ->where('id', '!=', $leave->id) // Exclude current leave
+            ->whereBetween('created_at', [$date['start_date'], $date['end_date']])
+            ->sum('total_leave_days');
+
+        // Calculate pending leaves (excluding current leave)
+        $leaves_pending = Leave::where('employee_id', $leave->employee_id)
+            ->where('leave_type_id', $leave_type->id)
+            ->where('status', 'pending')
+            ->where('id', '!=', $leave->id) // Exclude current leave
+            ->whereBetween('created_at', [$date['start_date'], $date['end_date']])
+            ->sum('total_leave_days');
+
+        $remaining_leaves = $leave_type->days - $leaves_used;
+
+        // Check total leave balance including pending leaves
+        $total_requested = $leaves_pending + $total_leave_days;
+        if ($total_requested > $remaining_leaves) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Insufficient leave balance when including pending requests.',
+                'data' => [
+                    'leave_balance' => $remaining_leaves,
+                    'pending_leaves' => $leaves_pending,
+                    'requested_days' => $total_leave_days,
+                    'total_requested' => $total_requested,
+                ],
+            ], 400);
+        }
+
+        // Update leave request
+        try {
+            $companyTz = Utility::getCompanySchedule($leave->employee->user->creatorId())['company_timezone'];
+
+            $leave->update([
+                'leave_type_id' => $leave_type->id,
+                'start_date' => $request->start_date,
+                'end_date' => $request->end_date,
+                'total_leave_days' => $total_leave_days,
+                'leave_reason' => $request->leave_reason,
+                'emergency_contact' => $request->emergency_contact ?? $leave->emergency_contact,
+                'remark' => $request->remark,
+                'status' => 'pending', // Reset to pending since leave details changed
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Leave updated successfully.',
+                'data' => [
+                    'leave' => $this->formatLeaveResponse($leave, $companyTz),
+                    'leave_type' => $leave_type->title,
+                    'total_days' => $total_leave_days,
+                    'remaining_days' => $remaining_leaves - $total_leave_days,
+                ],
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to update leave.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function destroy($id)
+    {
+        if (!Auth::user()->can('Delete Leave')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Permission denied.',
+            ], 403);
+        }
+
+        $leave = Leave::find($id);
+        if (!$leave) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Leave not found.',
+            ], 404);
+        }
+
+        // Check if the user is authorized to delete this leave
+        // Only allow if it's their leave or they have admin privileges
+        // if ($leave->employee->user_id != Auth::id() && !Auth::user()->can('Manage All Leaves')) {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => 'You are not authorized to delete this leave.',
+        //     ], 403);
+        // }
+
+        // Don't allow deletion of approved leaves that have already been taken
+        if ($leave->status == 'approved' && Carbon::parse($leave->start_date)->isPast()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Cannot delete leave that has already been taken.',
+            ], 400);
+        }
+
+        try {
+            $leave->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Leave deleted successfully.',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to delete leave.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
     /** Untuk Admin dashboard / bukan employee */
     public function updateStatus(Request $request, $id)
@@ -146,7 +515,11 @@ class LeaveController extends Controller
             }
 
             $leave->status = $request->status;
-            $leave->remark = $request->remark;
+
+            if ($request->has('remark')) {
+                $leave->remark = $request->remark;
+            }
+
             $leave->save();
 
             // Load relationships for response

@@ -249,6 +249,31 @@ class AuthenticationController extends Controller
                 ], 400);
             }
 
+            // *** CHECK TERMINATION STATUS ***
+            if ($user->isTerminated()) {
+                // Get active termination data
+                $termination = $user->activeTermination()->first();
+
+                // If the user is terminated and trying to access via web
+                if ($platform === 'web' && $termination->is_mobile_access_allowed) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Terminated employees can only access via mobile application'
+                    ], 403);
+                }
+
+                // If the user is terminated and not allowed to access via any platform
+                if (!$termination->is_mobile_access_allowed) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Your account has been terminated and access is no longer available'
+                    ], 403);
+                }
+
+                // If we reach here, user is terminated but allowed to access via mobile
+                // and they are attempting to login from mobile, so we allow it to continue
+            }
+
             // Revoke existing tokens for the same platform
             $user->tokens()->where('name', $platform)->delete();
 
@@ -263,15 +288,26 @@ class AuthenticationController extends Controller
                 'last_login_platform' => $platform
             ]);
 
+            // Include termination data in response if user is terminated
+            $responseData = [
+                'user' => $user,
+                'token' => $token,
+                'token_type' => 'Bearer',
+                'platform' => $platform
+            ];
+
+            if ($user->isTerminated()) {
+                $responseData['termination'] = [
+                    'status' => 'terminated',
+                    // 'mobile_access_only' => true,
+                    'termination_date' => $user->activeTermination()->first()->termination_date
+                ];
+            }
+
             return response()->json([
                 'status' => true,
                 'message' => 'Login successful',
-                'data' => [
-                    'user' => $user,
-                    'token' => $token,
-                    'token_type' => 'Bearer',
-                    'platform' => $platform
-                ]
+                'data' => $responseData
             ], 200);
         } catch (\Exception $e) {
             // Log the error for internal tracking

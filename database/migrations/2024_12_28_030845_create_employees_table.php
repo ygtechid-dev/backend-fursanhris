@@ -35,7 +35,7 @@ return new class extends Migration
             $table->string('bank_identifier_code')->nullable();
             $table->string('branch_location')->nullable();
             $table->string('tax_payer_id')->nullable();
-            $table->integer('salary_type')->nullable();
+            $table->string('salary_type')->nullable();
             $table->integer('account_type')->nullable();
             $table->float('salary', 20, 2)->default(0.00);
             $table->integer('is_active')->default('1');

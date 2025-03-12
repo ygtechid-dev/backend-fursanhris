@@ -167,6 +167,7 @@ class AttendanceEmployee extends Model
                 : null;
 
             return [
+                'id' => $attendance->id,
                 'date' => $attendance->date,
                 'employee_name' => $attendance->employee->name ?? 'N/A',
                 'clock_in' => $clockIn ? $clockIn->format('H:i:s') : null,
