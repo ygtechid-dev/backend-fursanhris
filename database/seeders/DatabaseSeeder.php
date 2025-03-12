@@ -24,6 +24,6 @@ class DatabaseSeeder extends Seeder
         $this->call(TaskSeeder::class);
         $this->call(AllowanceDeductionSeeder::class);
         $this->call(PayslipSeeder::class);
-        $this->call(TerminateEmployeeSeeder::class);
+        // $this->call(TerminateEmployeeSeeder::class);
     }
 }
