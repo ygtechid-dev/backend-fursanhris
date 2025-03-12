@@ -114,7 +114,11 @@
         </div>
         @if($attendance->clock_in_photo)
         <div class="photo-container">
-            <img class="photo" src="{{ storage_path('app/public/' . $attendance->clock_in_photo) }}" alt="Clock In Photo">
+            @php
+                $path = str_replace('/storage/', '', parse_url($attendance->clock_in_photo, PHP_URL_PATH));
+                $realPath = storage_path('app/public/' . $path);
+            @endphp
+            <img class="photo" src="{{ $realPath }}" alt="Clock In Photo">
         </div>
         @endif
         @if($attendance->clock_in_notes)
@@ -145,7 +149,11 @@
         </div>
         @if($attendance->clock_out_photo)
         <div class="photo-container">
-            <img class="photo" src="{{ storage_path('app/public/' . $attendance->clock_out_photo) }}" alt="Clock Out Photo">
+            @php
+                $path = str_replace('/storage/', '', parse_url($attendance->clock_out_photo, PHP_URL_PATH));
+                $realPath = storage_path('app/public/' . $path);
+            @endphp
+            <img class="photo" src="{{ $realPath }}" alt="Clock Out Photo">
         </div>
         @endif
         @if($attendance->clock_out_notes)
