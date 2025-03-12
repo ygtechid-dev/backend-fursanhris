@@ -69,7 +69,7 @@
 <body>
     <div class="header">
         <h1>Attendance Detail Report</h1>
-        <p>Generated on: {{ now()->format('Y-m-d H:i:s') }}</p>
+        <p>Generated on: {{ now()->timezone($companyTz)->format('d M Y H:i:s') }}</p>
     </div>
 
     <div class="section">
@@ -191,7 +191,7 @@
     </div>
 
     <div class="footer">
-        <p>This is a system-generated report. Generated at {{ now()->format('Y-m-d H:i:s') }}</p>
+        <p>This is a system-generated report. Generated at {{ now()->timezone($companyTz)->format('d M Y H:i:s') }}</p>
     </div>
 </body>
 </html>
