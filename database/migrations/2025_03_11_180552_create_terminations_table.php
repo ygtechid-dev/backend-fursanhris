@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('employee_id')->nullable()->constrained()->onDelete('cascade');
-            $table->string('termination_type');
+            $table->integer('termination_type_id');
             $table->date('termination_date');
             $table->text('description')->nullable();
             $table->string('reason')->nullable();

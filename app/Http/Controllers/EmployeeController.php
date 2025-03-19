@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Allowance;
 use App\Models\Branch;
+use App\Models\Deduction;
 use App\Models\Department;
 use App\Models\Designation;
 use App\Models\Employee;
+use App\Models\Overtime;
 use App\Models\User;
 use Carbon\Carbon;
 use Exception;

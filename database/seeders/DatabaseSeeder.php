@@ -23,7 +23,15 @@ class DatabaseSeeder extends Seeder
         $this->call(ProjectSeeder::class);
         $this->call(TaskSeeder::class);
         $this->call(AllowanceDeductionSeeder::class);
-        $this->call(PayslipSeeder::class);
-        // $this->call(TerminateEmployeeSeeder::class);
+        // $this->call(PayslipSeeder::class);
+        $this->call(RewardSeeder::class);
+        $this->call(TripSeeder::class);
+        $this->call(PromotionSeeder::class);
+        $this->call(ComplaintSeeder::class);
+        $this->call(WarningSeeder::class);
+
+        /** Optional Seeder */
+        $this->call(ResignationSeeder::class);
+        $this->call(TerminateEmployeeSeeder::class); // harus di update fieldnya karena modelnya ada yang berubah
     }
 }

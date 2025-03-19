@@ -36,7 +36,6 @@ class Payslip extends Model
         return $this->belongsTo(Employee::class, 'employee_id');
     }
 
-    // Mendapatkan payslip berdasarkan filter
     public function getAllFilteredPayslips($request)
     {
         // Base query
@@ -63,7 +62,9 @@ class Payslip extends Model
 
         // Filter berdasarkan bulan dan tahun
         if (!empty($request->month) && !empty($request->year)) {
-            $query->where('month', $request->month)->where('year', $request->year);
+            $month = $request->month;
+            $year = $request->year;
+            $query->where('month', $month)->where('year', $year);
         } else {
             $month = date('m');
             $year = date('Y');
@@ -75,7 +76,17 @@ class Payslip extends Model
             $query->where('payment_status', $request->payment_status);
         }
 
-        return $query->orderBy('created_at', 'desc')->get();
+        $payslips = $query->orderBy('created_at', 'desc')->get();
+
+        // Calculate net salary for each payslip if not already calculated
+        foreach ($payslips as $payslip) {
+            if (!$payslip->net_salary) {
+                $payslip->net_salary = $this->calculateNetSalary($payslip->employee_id, $payslip->month, $payslip->year);
+                $payslip->save();
+            }
+        }
+
+        return $payslips;
     }
 
     // Generate Payslip untuk satu bulan
@@ -126,8 +137,8 @@ class Payslip extends Model
                 // Allowance bulanan
                 $monthlyAllowances = Allowance::where('employee_id', $employee->id)
                     ->where('type', 'monthly')
-                    ->where('month', $month)
-                    ->where('year', $year)
+                    ->where('month', sprintf('%02d', $month)) // Format menjadi 2 digit (03 bukan 3)
+                    ->where('year', (int)$year)
                     ->where('created_by', $created_by)
                     ->get();
 
@@ -151,8 +162,8 @@ class Payslip extends Model
                 // Deduction bulanan
                 $monthlyDeductions = Deduction::where('employee_id', $employee->id)
                     ->where('type', 'monthly')
-                    ->where('month', $month)
-                    ->where('year', $year)
+                    ->where('month', sprintf('%02d', $month)) // Format menjadi 2 digit (03 bukan 3)
+                    ->where('year', (int)$year)
                     ->where('created_by', $created_by)
                     ->get();
 
@@ -181,7 +192,7 @@ class Payslip extends Model
 
                     $overtimeTotal += $overtimeAmount;
                 }
-
+                // dd($basic_salary, $totalAllowance, $overtimeTotal, $totalDeduction);
                 // Update total allowance, deduction, dan net salary
                 $payslip->total_allowance = $totalAllowance;
                 $payslip->total_deduction = $totalDeduction;

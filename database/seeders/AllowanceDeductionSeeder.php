@@ -31,7 +31,7 @@ class AllowanceDeductionSeeder extends Seeder
         }
 
         $month = date('m');
-        $year = date('Y');
+        $year = strval(date('Y'));
         $currentMonth = Carbon::now();
         $lastMonth = Carbon::now()->subMonth();
 
@@ -116,23 +116,23 @@ class AllowanceDeductionSeeder extends Seeder
             ]);
 
 
-            for ($i = 0; $i < 2; $i++) {
-                $day = 10 + $i; // Tanggal 10 dan 11
-                $date = $currentMonth->copy()->setDay($day);
+            // for ($i = 0; $i < 2; $i++) {
+            //     $day = 10 + $i; // Tanggal 10 dan 11
+            //     $date = $currentMonth->copy()->setDay($day);
 
-                Overtime::create([
-                    'employee_id' => $employee->id,
-                    'overtime_date' => $date->format('Y-m-d'),
-                    'hours' => 2,
-                    'number_of_days' => 1,
-                    'rate' => 50000,
-                    'start_time' => '18:00:00',
-                    'end_time' => '20:00:00',
-                    'remark' => 'Lembur proyek X',
-                    'status' => 'approved',
-                    'created_by' => $created_by
-                ]);
-            }
+            //     Overtime::create([
+            //         'employee_id' => $employee->id,
+            //         'overtime_date' => $date->format('Y-m-d'),
+            //         'hours' => 2,
+            //         'number_of_days' => 1,
+            //         'rate' => 50000,
+            //         'start_time' => '18:00:00',
+            //         'end_time' => '20:00:00',
+            //         'remark' => 'Lembur proyek X',
+            //         'status' => 'approved',
+            //         'created_by' => $created_by
+            //     ]);
+            // }
         }
 
         $this->command->info('Seeder Allowance dan Deduction berhasil dijalankan!');

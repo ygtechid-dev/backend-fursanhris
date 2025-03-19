@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Models\AttendanceEmployee;
+use App\Models\User;
 use App\Models\Utility;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -457,6 +458,21 @@ class AttendanceEmployeeController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function getEmployeeWorkingPeriod()
+    {
+        $user = User::with('employee')->where('id', Auth::user()->id)->first();
+        $companyTz = Utility::getCompanySchedule(Auth::user()->creatorId())['company_timezone'];
+
+        $attendanceEmployee = new AttendanceEmployee();
+        $yearlyData = $attendanceEmployee->getAnnualWorkingPeriodSummary($user?->employee->id, 2025, $companyTz);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Working Period retrieved successfully',
+            'data' => $yearlyData
+        ], 200);
     }
 
     private function calculateLateTime($date, $currentTime, $startTime, $employeeId, $timezone)

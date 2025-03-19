@@ -22,7 +22,7 @@ class PayslipController extends Controller
     public function index(Request $request)
     {
         // Check if user has permission to view their payslips
-        if (!Auth::user()->can('Manage Payslip')) {
+        if (!Auth::user()->can('Manage Pay Slip')) {
             return response()->json([
                 'status' => false,
                 'message' => 'Permission denied.',
@@ -93,8 +93,8 @@ class PayslipController extends Controller
      */
     public function show($id)
     {
-        // Check if user has permission to Manage payslip
-        if (!Auth::user()->can('Manage Payslip')) {
+        // Check if user has permission to Manage Pay Slip
+        if (!Auth::user()->can('Manage Pay Slip')) {
             return response()->json([
                 'status' => false,
                 'message' => 'Permission denied.',
@@ -144,7 +144,7 @@ class PayslipController extends Controller
     public function exportPdf($id)
     {
         // Check if user has permission to export payslip
-        if (!Auth::user()->can('Manage Payslip')) {
+        if (!Auth::user()->can('Manage Pay Slip')) {
             return response()->json([
                 'status' => false,
                 'message' => 'Permission denied.',

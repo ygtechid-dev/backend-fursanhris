@@ -98,4 +98,105 @@ class AttendanceEmployeeController extends Controller
             );
         }
     }
+
+    /**
+     * Display the specified attendance record.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id)
+    {
+        if (Auth::user()->can('Manage Attendance')) {
+            // Get company timezone
+            $companyTz = Utility::getCompanySchedule(Auth::user()->creatorId())['company_timezone'];
+
+            // Find the attendance record
+            $attendance = AttendanceEmployee::with('employee')->find($id);
+
+            if (!$attendance) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Attendance record not found.'
+                ], 404);
+            }
+
+            // Check permission - user can only view their own records or any if admin
+            $canView = false;
+            if (Auth::user()->type == 'employee') {
+                $emp = !empty(Auth::user()->employee) ? Auth::user()->employee->id : 0;
+                $canView = ($attendance->employee_id == $emp);
+            } else {
+                $canView = true;
+            }
+
+            if (!$canView) {
+                return response()->json([
+                    'status' => false,
+                    'message' => __('Permission denied.')
+                ], 403);
+            }
+
+            // Format the times with timezone
+            $clockIn = $attendance->clock_in && $attendance->clock_in != '00:00:00'
+                ? \Carbon\Carbon::parse($attendance->clock_in, 'UTC')
+                ->setDate(
+                    \Carbon\Carbon::parse($attendance->date)->year,
+                    \Carbon\Carbon::parse($attendance->date)->month,
+                    \Carbon\Carbon::parse($attendance->date)->day
+                )
+                ->setTimezone($companyTz)
+                : null;
+
+            $clockOut = $attendance->clock_out && $attendance->clock_out != '00:00:00'
+                ? \Carbon\Carbon::parse($attendance->clock_out, 'UTC')
+                ->setDate(
+                    \Carbon\Carbon::parse($attendance->date)->year,
+                    \Carbon\Carbon::parse($attendance->date)->month,
+                    \Carbon\Carbon::parse($attendance->date)->day
+                )
+                ->setTimezone($companyTz)
+                : null;
+
+            $attendanceData = [
+                'id' => $attendance->id,
+                'date' => $attendance->date,
+                'employee_id' => $attendance->employee_id,
+                'employee_name' => $attendance->employee->name ?? 'N/A',
+                'status' => $attendance->status,
+                'clock_in' => $clockIn ? $clockIn->format('H:i:s') : null,
+                'clock_in_formatted' => $clockIn ? $clockIn->format('Y-m-d H:i:s') : null,
+                'clock_in_location' => $attendance->clock_in_location,
+                'clock_in_latitude' => $attendance->clock_in_latitude,
+                'clock_in_longitude' => $attendance->clock_in_longitude,
+                'clock_in_photo' => $attendance->clock_in_photo,
+                'clock_in_notes' => $attendance->clock_in_notes,
+                'clock_out' => $clockOut ? $clockOut->format('H:i:s') : null,
+                'clock_out_formatted' => $clockOut ? $clockOut->format('Y-m-d H:i:s') : null,
+                'clock_out_location' => $attendance->clock_out_location,
+                'clock_out_latitude' => $attendance->clock_out_latitude,
+                'clock_out_longitude' => $attendance->clock_out_longitude,
+                'clock_out_photo' => $attendance->clock_out_photo,
+                'clock_out_notes' => $attendance->clock_out_notes,
+                'late' => $attendance->late,
+                'early_leaving' => $attendance->early_leaving,
+                'overtime' => $attendance->overtime,
+                'total_rest' => $attendance->total_rest,
+                'timezone' => $attendance->timezone,
+                'created_at' => $attendance->created_at,
+                'updated_at' => $attendance->updated_at
+            ];
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Successfully retrieved attendance details.',
+                'data' => $attendanceData
+            ], 200);
+        } else {
+            return response()->json([
+                'status' => false,
+                'message' => __('Permission denied.')
+            ], 403);
+        }
+    }
 }

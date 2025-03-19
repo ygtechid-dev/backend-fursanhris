@@ -74,13 +74,15 @@ class EmployeeSeeder extends Seeder
             'Manage Designation',
             'Manage Overtime',
             'Create Overtime',
+            'Edit Overtime',
+            'Delete Overtime',
             'Manage Reimbursement',
             'Create Reimbursement',
             'Manage Project',
             'Manage Task',
             'Create Task',
             'Edit Task',
-            'Manage Payslip',
+            'Manage Pay Slip',
         ];
 
         $employeeRole->givePermissionTo($employeePermission);

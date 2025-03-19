@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Employee;
 use App\Models\Termination;
+use App\Models\TerminationType;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -48,11 +49,16 @@ class TerminateEmployeeSeeder extends Seeder
         try {
             DB::beginTransaction();
 
+            $termin_type = TerminationType::create([
+                'name'  => 'Voluntary Termination',
+                'created_by'    => $employee->user->creatorId()
+            ]);
+
             // Create a termination record
             $termination = Termination::create([
                 'user_id' => $employee->user->id,
                 'employee_id' => $employee->id ?? null,
-                'termination_type' => 'Involuntary',
+                'termination_type_id' => $termin_type->id,
                 'termination_date' => now(),
                 'description' => 'Terminated as part of system testing',
                 'reason' => 'Testing termination functionality',

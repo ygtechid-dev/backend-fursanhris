@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Employee;
 use App\Models\Overtime;
 use App\Models\User;
 use App\Models\Utility;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -33,6 +35,7 @@ class OvertimeController extends Controller
             'rejecter' => $overtime->rejecter,
         ];
     }
+
     public function index()
     {
         if (Auth::user()->can('Manage Overtime')) {
@@ -56,6 +59,203 @@ class OvertimeController extends Controller
                 'status' => false,
                 'message' => 'Permission denied.',
             ], 403);
+        }
+    }
+
+    public function store(Request $request)
+    {
+        if (Auth::user()->can('Create Overtime')) {
+            $validator = Validator::make(
+                $request->all(),
+                [
+                    'employee_id' => 'nullable',
+                    'title' => 'nullable',
+                    'overtime_date' => 'required|date',
+                    'start_time' => 'required',
+                    'end_time' => 'required',
+                    'remark' => 'nullable',
+                ]
+            );
+
+            if ($validator->fails()) {
+                $messages = $validator->getMessageBag();
+
+                return response()->json([
+                    'status'   => false,
+                    'message'   => $messages->first()
+                ], 400);
+            }
+            $user = Auth::user();
+
+            // Calculate hours between start and end time
+            $startTime = Carbon::parse($request->overtime_date . ' ' . $request->start_time);
+            $endTime = Carbon::parse($request->overtime_date . ' ' . $request->end_time);
+            // dd($startTime, $endTime);
+            // If end time is before start time, assume it's next day
+            if ($endTime->lt($startTime)) {
+                $endTime->addDay();
+            }
+
+            // Calculate duration in hours using diffInMinutes and converting to hours
+            $hours = $startTime->diffInMinutes($endTime) / 60;
+
+            try {
+                $companyTz = Utility::getCompanySchedule($user->creatorId())['company_timezone'];
+                $overtime = Overtime::create([
+                    'employee_id' => $request->employee_id,
+                    'overtime_date' => $request->overtime_date,
+                    'start_time' => $startTime->format('H:i:s'),
+                    'end_time' => $endTime->format('H:i:s'),
+                    'hours' => round($hours, 2),
+                    'status' => 'approved',
+                    'remark' => $request->remark,
+                    'created_by' => $user->creatorId(),
+                ]);
+
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Overtime request successfully created.',
+                    'data' => [
+                        'overtime' => $this->formatOvertimeResponse($overtime, $companyTz),
+                    ],
+                ], 201);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to create overtime request.',
+                    'error' => $e->getMessage(),
+                ], 500);
+            }
+        } else {
+            return response()->json([
+                'status' => false,
+                'message' => 'Permission denied.',
+            ], 403);
+        }
+    }
+
+    public function show($id)
+    {
+        if (!Auth::user()->can('Manage Overtime')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Permission denied.',
+            ], 403);
+        }
+
+        try {
+            $overtime = Overtime::with(['employee', 'approver', 'rejecter'])->findOrFail($id);
+
+            // Check if the overtime belongs to the current user's company
+            if ($overtime->created_by != Auth::user()->creatorId()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Overtime not found.',
+                ], 404);
+            }
+
+            $user = User::with('employee')->where('id', Auth::user()->id)->first();
+            $companyTz = Utility::getCompanySchedule($user->creatorId())['company_timezone'];
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Overtime retrieved successfully.',
+                'data' => $this->formatOvertimeResponse($overtime, $companyTz)
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to retrieve overtime.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function update(Request $request, $id)
+    {
+        if (!Auth::user()->can('Edit Overtime')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Permission denied.',
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'employee_id' => 'required',
+            'title' => 'required|string|max:255',
+            'number_of_days' => 'required|numeric|min:0.1',
+            'overtime_date' => 'required|date',
+            'start_time' => 'required',
+            'end_time' => 'required',
+            'hours' => 'required|numeric|min:0.1',
+            'rate' => 'required|numeric|min:0',
+            'remark' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            $messages = $validator->getMessageBag();
+
+            return response()->json([
+                'status' => false,
+                'message' => $messages->first()
+            ], 400);
+        }
+
+        try {
+            $overtime = Overtime::findOrFail($id);
+
+            // Check if the overtime belongs to the current user's company
+            if ($overtime->created_by != Auth::user()->creatorId()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Overtime not found.',
+                ], 404);
+            }
+
+            // Check if the overtime status is pending
+            if ($overtime->status !== 'pending') {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Only pending overtime requests can be updated.',
+                ], 400);
+            }
+
+            // Check if employee exists and belongs to the company
+            $employee = Employee::findOrFail($request->employee_id);
+            if ($employee->created_by != Auth::user()->creatorId()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Employee not found in your company.',
+                ], 404);
+            }
+
+            // Update overtime record
+            $overtime->employee_id = $request->employee_id;
+            $overtime->title = $request->title;
+            $overtime->number_of_days = $request->number_of_days;
+            $overtime->overtime_date = $request->overtime_date;
+            $overtime->start_time = $request->start_time;
+            $overtime->end_time = $request->end_time;
+            $overtime->hours = $request->hours;
+            $overtime->rate = $request->rate;
+            $overtime->remark = $request->remark;
+            $overtime->save();
+
+            // Load relationships for response
+            $overtime->load(['employee', 'approver', 'rejecter']);
+            $companyTz = Utility::getCompanySchedule($overtime->created_by)['company_timezone'];
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Overtime updated successfully.',
+                'data' => $this->formatOvertimeResponse($overtime, $companyTz)
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to update overtime.',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -136,6 +336,42 @@ class OvertimeController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to update overtime status.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function destroy($id)
+    {
+        if (!Auth::user()->can('Delete Overtime')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Permission denied.',
+            ], 403);
+        }
+
+        try {
+            $overtime = Overtime::findOrFail($id);
+
+            // Check if the overtime belongs to the current user's company
+            if ($overtime->created_by != Auth::user()->creatorId()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You can only delete overtime records created by your company.',
+                ], 403);
+            }
+
+            // Delete the overtime record
+            $overtime->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Overtime deleted successfully.',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to delete overtime.',
                 'error' => $e->getMessage()
             ], 500);
         }
