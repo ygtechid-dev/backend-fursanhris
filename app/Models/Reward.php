@@ -21,6 +21,7 @@ class Reward extends Model
         'date',
         'gift',
         'description',
+        'created_by',
     ];
 
     /**

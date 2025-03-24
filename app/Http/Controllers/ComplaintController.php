@@ -36,6 +36,7 @@ class ComplaintController extends Controller
 
 
         $complaints = $query->with(['complaintFrom', 'complaintAgainst'])
+            ->where('created_by', Auth::user()->creatorId())
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($complaint) use ($companyTz) {
@@ -76,8 +77,8 @@ class ComplaintController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'complaint_from' => 'required|exists:employees,id',
-            'complaint_against' => 'required|exists:employees,id',
+            'complaint_from_id' => 'required|exists:employees,id',
+            'complaint_against_id' => 'required|exists:employees,id',
             'title' => 'required|string|max:255',
             'complaint_date' => 'required|date',
             'description' => 'required|string',
@@ -92,8 +93,8 @@ class ComplaintController extends Controller
         }
 
         $complaint = Complaint::create([
-            'complaint_from' => $request->complaint_from,
-            'complaint_against' => $request->complaint_against,
+            'complaint_from' => $request->complaint_from_id,
+            'complaint_against' => $request->complaint_against_id,
             'title' => $request->title,
             'complaint_date' => $request->complaint_date,
             'description' => $request->description,
@@ -184,8 +185,8 @@ class ComplaintController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'complaint_from' => 'sometimes|required|exists:employees,id',
-            'complaint_against' => 'sometimes|required|exists:employees,id',
+            'complaint_from_id' => 'sometimes|required|exists:employees,id',
+            'complaint_against_id' => 'sometimes|required|exists:employees,id',
             'title' => 'sometimes|required|string|max:255',
             'complaint_date' => 'sometimes|required|date',
             'description' => 'sometimes|required|string',
@@ -200,8 +201,8 @@ class ComplaintController extends Controller
         }
 
         $complaint->update($request->only([
-            'complaint_from',
-            'complaint_against',
+            'complaint_from_id',
+            'complaint_against_id',
             'title',
             'complaint_date',
             'description',

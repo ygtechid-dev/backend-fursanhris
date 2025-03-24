@@ -33,7 +33,7 @@ class ResignationController extends Controller
         $query = Resignation::query();
 
         // Only get resignations created by current user's creator
-        $query->where('created_by', Auth::user()->creatorId());
+        $query->where('created_by', $user->creatorId());
 
         $resignations = $query->with(['employee'])
             ->orderBy('created_at', 'desc')

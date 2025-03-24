@@ -40,6 +40,7 @@ class TerminationController extends Controller
         // }
 
         $terminations = $query->with(['user', 'employee', 'terminationType', 'terminatedBy'])
+            ->where('created_by', Auth::user()->creatorId())
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($termination) use ($companyTz) {
@@ -54,7 +55,7 @@ class TerminationController extends Controller
         ];
 
         $statusCounts = Termination::select('status', DB::raw('count(*) as count'))
-            ->where('created_by', $user->creatorId())
+            ->where('created_by', Auth::user()->creatorId())
             ->groupBy('status')
             ->pluck('count', 'status')
             ->toArray();
@@ -93,10 +94,10 @@ class TerminationController extends Controller
             'termination_type_id' => 'required|exists:termination_types,id',
             'termination_date' => 'required|date',
             'notice_date' => 'required|date',
-            'reason' => 'required|string',
+            'reason' => 'nullable|string',
             'description' => 'nullable|string',
             'is_mobile_access_allowed' => 'nullable|boolean',
-            'status' => 'required|in:active,inactive,pending',
+            'status' => 'required|in:active,inactive',
         ]);
 
         if ($validator->fails()) {
@@ -367,6 +368,7 @@ class TerminationController extends Controller
     {
         return [
             'id' => $termination->id,
+            'employee_id' => $termination->employee->id,
             'employee' => [
                 'id' => $termination->employee->id,
                 'name' => $termination->employee->name,
@@ -374,6 +376,7 @@ class TerminationController extends Controller
                 'department' => $termination->employee->department ? $termination->employee->department->name : null,
                 'designation' => $termination->employee->designation ? $termination->employee->designation->name : null,
             ],
+            'termination_type_id' => $termination->terminationType ? $termination->terminationType->id : null,
             'termination_type' => $termination->terminationType ? $termination->terminationType->name : null,
             'termination_date' => $termination->termination_date->setTimezone($companyTz)->format('Y-m-d'),
             'notice_date' => $termination->notice_date->setTimezone($companyTz)->format('Y-m-d'),
@@ -381,6 +384,7 @@ class TerminationController extends Controller
             'description' => $termination->description,
             'status' => $termination->status,
             'is_mobile_access_allowed' => $termination->is_mobile_access_allowed,
+            'terminated_by_id' => $termination->terminatedBy->id,
             'terminated_by' => [
                 'id' => $termination->terminatedBy->id,
                 'name' => $termination->terminatedBy->employee_name(),

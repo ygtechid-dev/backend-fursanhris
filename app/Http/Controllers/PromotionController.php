@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Models\Promotion;
+use App\Models\Utility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -62,6 +63,14 @@ class PromotionController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Permission denied.',
+            ], 403);
+        }
+
+        $setings = Utility::settings();
+        if ($setings['employee_promotion'] != 1) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Action cannot be continued.',
             ], 403);
         }
 

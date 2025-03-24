@@ -67,11 +67,19 @@ class TaskSeeder extends Seeder
     private function createTasksForProject($project, $creator, $users, $now)
     {
         $taskCount = rand(3, 10);
-        $statuses = ['todo', 'in_progress', 'done'];
+        $statuses = ['todo', 'in_progress', 'in_review', 'done'];
         $priorities = ['low', 'medium', 'high'];
 
         // Distribute task statuses based on project status
         $statusDistribution = $this->getStatusDistributionByProjectStatus($project->status);
+
+        // Track position counter for each status
+        $positionCounters = [
+            'todo' => 1,
+            'in_progress' => 1,
+            'in_review' => 1,
+            'done' => 1
+        ];
 
         for ($i = 1; $i <= $taskCount; $i++) {
             // Determine task status based on distribution
@@ -80,6 +88,10 @@ class TaskSeeder extends Seeder
 
             // Set due date based on task and project status
             $dueDate = $this->getDueDate($status, $project, $now);
+
+            // Determine position based on status
+            $position = $positionCounters[$status];
+            $positionCounters[$status]++;
 
             // Create the task
             $task = Task::create([
@@ -90,6 +102,7 @@ class TaskSeeder extends Seeder
                 'priority' => $priorities[rand(0, 2)],
                 'due_date' => $dueDate,
                 'created_by' => $creator->id,
+                'position' => $position, // Set the position field
                 'created_at' => $now->copy()->subDays(rand(1, 30)),
                 'updated_at' => $now->copy()->subDays(rand(0, 5)),
             ]);
@@ -127,25 +140,29 @@ class TaskSeeder extends Seeder
                 return [
                     'todo' => 0,
                     'in_progress' => 0,
+                    'in_review' => 0,
                     'done' => 100,
                 ];
             case 'on_hold':
                 return [
-                    'todo' => 70,
+                    'todo' => 60,
                     'in_progress' => 20,
+                    'in_review' => 10,
                     'done' => 10,
                 ];
             case 'active':
                 return [
-                    'todo' => 30,
-                    'in_progress' => 50,
-                    'done' => 20,
+                    'todo' => 25,
+                    'in_progress' => 40,
+                    'in_review' => 20,
+                    'done' => 15,
                 ];
             default:
                 return [
-                    'todo' => 40,
-                    'in_progress' => 30,
-                    'done' => 30,
+                    'todo' => 35,
+                    'in_progress' => 25,
+                    'in_review' => 20,
+                    'done' => 20,
                 ];
         }
     }
@@ -191,6 +208,10 @@ class TaskSeeder extends Seeder
                     // Done tasks should have due dates in the past
                     return $now->copy()->subDays(rand(1, 15))->format('Y-m-d');
 
+                case 'in_review':
+                    // In review tasks should have due dates very soon
+                    return $now->copy()->addDays(rand(0, 5))->format('Y-m-d');
+
                 case 'in_progress':
                     // In progress tasks should have due dates soon
                     return $now->copy()->addDays(rand(1, 10))->format('Y-m-d');
@@ -206,6 +227,8 @@ class TaskSeeder extends Seeder
         switch ($taskStatus) {
             case 'done':
                 return $now->copy()->subDays(rand(1, 15))->format('Y-m-d');
+            case 'in_review':
+                return $now->copy()->addDays(rand(0, 5))->format('Y-m-d');
             case 'in_progress':
                 return $now->copy()->addDays(rand(1, 10))->format('Y-m-d');
             case 'todo':

@@ -111,14 +111,23 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::apiResource('roles', Controllers\RoleController::class);
         Route::apiResource('attendance-employee', Controllers\AttendanceEmployeeController::class);
         Route::apiResource('rewards', Controllers\RewardController::class);
+        Route::apiResource('reward_types', Controllers\RewardTypeController::class);
         Route::apiResource('resignations', Controllers\ResignationController::class);
         Route::apiResource('trips', Controllers\TripController::class);
         Route::apiResource('promotions', Controllers\PromotionController::class);
         Route::apiResource('complaints', Controllers\ComplaintController::class);
         Route::apiResource('warnings', Controllers\WarningController::class);
         Route::apiResource('terminations', Controllers\TerminationController::class);
+        Route::apiResource('termination-types', Controllers\TerminationTypeController::class);
 
         Route::apiResource('employees', Controllers\EmployeeController::class);
+
+        /** Dashboard */
+        Route::get('/dashboard/card-stats', [Controllers\DashboardController::class, 'getCardStats']);
+
+        /** User */
+        Route::get('/get-users', [Controllers\UserController::class, 'getUser']);
+
 
         /** Employee Allowance */
         Route::get('/employees/{id}/allowances', [Controllers\EmployeeAllowanceController::class, 'getAllowances']);
@@ -132,7 +141,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('/employees/{id}/deductions/{deductionId}', [Controllers\EmployeeDeductionController::class, 'update']);
         Route::delete('/employees/{id}/deductions/{deductionId}', [Controllers\EmployeeDeductionController::class, 'destroy']);
 
+        /** Employee Overtime */
         Route::get('/employees/{id}/overtimes', [Controllers\EmployeeOvertimeController::class, 'getOvertimes']);
+        Route::post('/employees/{id}/overtimes', [Controllers\EmployeeOvertimeController::class, 'store']);
+        Route::put('/employees/{id}/overtimes/{overtimeId}', [Controllers\EmployeeOvertimeController::class, 'update']);
+        Route::delete('/employees/{id}/overtimes/{overtimeId}', [Controllers\EmployeeOvertimeController::class, 'destroy']);
 
         Route::apiResource('salaries', Controllers\EmployeeSalaryController::class);
         /** Payslip */
@@ -145,8 +158,38 @@ Route::middleware(['auth:sanctum'])->group(function () {
         });
 
         /** Project */
+        Route::prefix('project-dashboard')->group(function () {
+            Route::get('/stats', [App\Http\Controllers\ProjectDashboardController::class, 'getStats']);
+            Route::get('/project-completion', [App\Http\Controllers\ProjectDashboardController::class, 'getProjectCompletion']);
+            Route::get('/recent-activities', [App\Http\Controllers\ProjectDashboardController::class, 'getRecentActivities']);
+        });
         Route::prefix('projects')->group(function () {
             Route::get('/', [Controllers\ProjectController::class, 'index']);
+            Route::post('/', [Controllers\ProjectController::class, 'store']);
+            Route::put('/{id}', [Controllers\ProjectController::class, 'update']);
+            Route::delete('/{id}', [Controllers\ProjectController::class, 'destroy']);
+
+            Route::prefix('{id}/tasks')->group(function () {
+                Route::get('/', [Controllers\TaskController::class, 'index']);
+            });
+        });
+        Route::prefix('tasks')->group(function () {
+            Route::post('/', [Controllers\TaskController::class, 'store']);
+            Route::get('/{id}', [Controllers\TaskController::class, 'show']);
+            Route::post('/reorder', [Controllers\TaskController::class, 'reorder']);
+            Route::post('{task}/status', [Controllers\TaskController::class, 'updateStatus']);
+            Route::put('{task}', [Controllers\TaskController::class, 'update']);
+            Route::delete('{id}', [Controllers\TaskController::class, 'destroy']);
+
+            // Comment routes
+            Route::get('{task}/comments', [Controllers\TaskController::class, 'getComments']);
+            Route::post('{task}/comments', [Controllers\TaskController::class, 'addComment']);
+            Route::delete('{task}/comments/{comment}', [Controllers\TaskController::class, 'deleteComment']);
+
+            // Attachment routes
+            Route::get('{task}/attachments', [Controllers\TaskController::class, 'getAttachments']);
+            Route::post('{task}/attachments', [Controllers\TaskController::class, 'uploadAttachment']);
+            Route::delete('{task}/attachments/{attachment}', [Controllers\TaskController::class, 'deleteAttachment']);
         });
 
         Route::get('/companies', [Controllers\UserController::class, 'getCompanies']);

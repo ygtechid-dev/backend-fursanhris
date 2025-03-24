@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
         $this->call(PromotionSeeder::class);
         $this->call(ComplaintSeeder::class);
         $this->call(WarningSeeder::class);
+        $this->call(TerminationTypeSeeder::class);
 
         /** Optional Seeder */
         $this->call(ResignationSeeder::class);

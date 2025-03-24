@@ -43,9 +43,12 @@ class RewardSeeder extends Seeder
         ];
 
         foreach ($rewardTypes as $type) {
-            RewardType::firstOrCreate(
-                ['name' => $type['name']],
-                ['description' => $type['description']]
+            RewardType::create(
+                [
+                    'name' => $type['name'],
+                    'description' => $type['description'],
+                    'created_by'    => 2
+                ],
             );
         }
 
@@ -93,6 +96,7 @@ class RewardSeeder extends Seeder
                 'description' => $this->generateDescription($rewardTypeId),
                 'created_at' => $now,
                 'updated_at' => $now,
+                'created_by' => 2
             ];
         }
 

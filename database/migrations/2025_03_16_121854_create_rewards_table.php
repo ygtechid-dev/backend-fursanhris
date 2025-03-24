@@ -18,6 +18,7 @@ return new class extends Migration
             $table->date('date');
             $table->string('gift')->nullable();
             $table->text('description')->nullable();
+            $table->integer('created_by');
             $table->timestamps();
         });
     }

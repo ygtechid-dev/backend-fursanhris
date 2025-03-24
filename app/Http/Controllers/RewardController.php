@@ -32,12 +32,14 @@ class RewardController extends Controller
 
 
         $rewards = $query->with(['employee', 'rewardType'])
+            ->where('created_by', $user->creatorId())
             ->orderBy('created_at', 'desc')
             ->get();
 
         // Count rewards by type
         $rewardCounts = DB::table('rewards')
             ->select('reward_type_id', DB::raw('count(*) as count'))
+            ->where('created_by', $user->creatorId())
             ->groupBy('reward_type_id')
             ->pluck('count', 'reward_type_id')
             ->toArray();
@@ -82,13 +84,13 @@ class RewardController extends Controller
                 'errors' => $validator->errors(),
             ], 400);
         }
-
+        $request['created_by'] = Auth::user()->creatorId();
         $reward = Reward::create($request->all());
 
         return response()->json([
             'status' => true,
             'message' => 'Reward created successfully',
-            'data' => $reward->load(['employee', 'rewardType']),
+            // 'data' => $reward->load(['employee', 'rewardType']),
         ], 201);
     }
 

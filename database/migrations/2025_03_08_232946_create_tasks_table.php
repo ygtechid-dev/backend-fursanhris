@@ -16,10 +16,11 @@ return new class extends Migration
             $table->unsignedBigInteger('project_id'); // Foreign key ke project
             $table->string('title');
             $table->text('description')->nullable();
-            $table->enum('status', ['todo', 'in_progress', 'done'])->default('todo');
+            $table->enum('status', ['todo', 'in_progress', 'in_review', 'done'])->default('todo');
             $table->enum('priority', ['low', 'medium', 'high'])->default('medium');
             $table->date('due_date')->nullable();
             $table->integer('created_by');
+            $table->integer('position')->nullable();
 
             $table->foreign('project_id')->references('id')->on('projects')->onDelete('cascade');
             $table->timestamps();

@@ -17,6 +17,7 @@ class Task extends Model
         'priority', // 'low', 'medium', 'high'
         'due_date',
         'created_by',
+        'position',
     ];
 
     // Relasi dengan project

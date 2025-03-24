@@ -21,10 +21,13 @@ class UserController extends Controller
                 $users = User::where('created_by', '=', $user->creatorId())->where('type', '=', 'company')->get();
                 // $CountUser = User::where('created_by')->get();
             } else {
-                $users = User::where('created_by', '=', $user->creatorId())->where('type', '!=', 'employee')->get();
+                $users = User::where('created_by', '=', $user->creatorId())
+                    ->where('type', '!=', 'employee')
+                    ->get();
             }
 
             return response()->json([
+                'status'    => true,
                 'message'   => 'Successfully retrieved data',
                 'data'      => $users
             ]);
@@ -32,6 +35,49 @@ class UserController extends Controller
             return response()->json(
                 [
                     'status'    => false,
+                    'message' => __('Permission denied.')
+                ],
+                403
+            );
+        }
+    }
+
+    public function getUser()
+    {
+        if (Auth::user()->can('Manage User')) {
+            $companyId = 2; // Company ID yang ingin Anda gunakan
+
+            // Dapatkan company user
+            $company = User::where('id', $companyId)
+                ->where('type', 'company')
+                ->first();
+
+            // Dapatkan semua users yang dibuat oleh company tersebut
+            $employeeUsers = User::where('created_by', $companyId)
+                ->where('id', '!=', $companyId) // Exclude the company itself
+                ->get();
+
+            // Gabungkan company dengan employee users
+            $allUsers = collect([$company])->merge($employeeUsers)
+                ->map(function ($user) {
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->employee_name(),
+                        'email' => $user->email,
+                        'avatar' => $user->avatar,
+                        'type' => $user->type,
+                        'employee' => $user->type == 'employee' ? $user->employee : null,
+                    ];
+                });
+
+            return response()->json([
+                'message' => 'Successfully retrieved data',
+                'data' => $allUsers
+            ]);
+        } else {
+            return response()->json(
+                [
+                    'status' => false,
                     'message' => __('Permission denied.')
                 ],
                 403

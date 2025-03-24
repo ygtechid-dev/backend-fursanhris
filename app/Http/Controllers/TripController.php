@@ -33,7 +33,7 @@ class TripController extends Controller
         $query = Trip::query();
 
         // For admin, show all trips for the company
-        $query->where('created_by', Auth::user()->creatorId());
+        $query->where('created_by', $user->creatorId());
 
         $trips = $query->with(['employee'])
             ->orderBy('created_at', 'desc')
@@ -44,10 +44,16 @@ class TripController extends Controller
 
         // Count trips by status (you might want to add a status field to your Trip model)
         $tripCounts = [
-            'upcoming' => Trip::where('start_date', '>', date('Y-m-d'))->count(),
+            'upcoming' => Trip::where('start_date', '>', date('Y-m-d'))
+                ->where('created_by', $user->creatorId())
+                ->count(),
             'ongoing' => Trip::where('start_date', '<=', date('Y-m-d'))
-                ->where('end_date', '>=', date('Y-m-d'))->count(),
-            'completed' => Trip::where('end_date', '<', date('Y-m-d'))->count()
+                ->where('created_by', $user->creatorId())
+                ->where('end_date', '>=', date('Y-m-d'))
+                ->count(),
+            'completed' => Trip::where('end_date', '<', date('Y-m-d'))
+                ->where('created_by', $user->creatorId())
+                ->count()
         ];
 
         return response()->json([
