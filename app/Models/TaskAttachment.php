@@ -13,6 +13,7 @@ class TaskAttachment extends Model
         'file_type',
         'file_size',
         'uploaded_by',
+        'url',
     ];
 
     // Relasi dengan task
@@ -25,5 +26,11 @@ class TaskAttachment extends Model
     public function uploader()
     {
         return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    public function setUrlAttribute($value)
+    {
+        // Validate URL format if needed
+        $this->attributes['url'] = filter_var($value, FILTER_VALIDATE_URL) ? $value : null;
     }
 }

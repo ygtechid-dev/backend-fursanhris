@@ -111,8 +111,16 @@ class TaskController extends Controller
                 // Get user IDs from the request
                 $userIds = collect($request->assigned)->pluck('id')->toArray();
 
-                // Attach the assignees
-                $task->assignees()->attach($userIds);
+                // Prepare an array to store attachments with assigned_by
+                $attachments = [];
+                foreach ($userIds as $userId) {
+                    $attachments[$userId] = [
+                        'assigned_by' => Auth::user()->id
+                    ];
+                }
+
+                // Attach the assignees with additional pivot data
+                $task->assignees()->attach($attachments);
             }
 
             DB::commit();
@@ -204,8 +212,16 @@ class TaskController extends Controller
                 // Get user IDs from the request
                 $userIds = collect($request->assigned)->pluck('id')->toArray();
 
+                // Prepare an array to store attachments with assigned_by
+                $assignees = [];
+                foreach ($userIds as $userId) {
+                    $assignees[$userId] = [
+                        'assigned_by' => Auth::user()->id
+                    ];
+                }
+
                 // Sync the assignees
-                $task->assignees()->sync($userIds);
+                $task->assignees()->sync($assignees);
             }
 
             // dd($request->all(), $task->wasChanged('status'));
@@ -531,32 +547,51 @@ class TaskController extends Controller
      */
     public function uploadAttachment(Request $request, $taskId)
     {
+        // Validasi untuk mendukung file atau URL
         $request->validate([
-            'file' => 'required|file|max:10240' // 10MB max size
+            'file' => 'nullable|file|max:10240', // Optional file upload
+            'url' => 'nullable|url|max:255', // Optional URL
         ]);
 
         try {
             // Find the task
             $task = Task::findOrFail($taskId);
 
-            // Get the file from request
-            $file = $request->file('file');
-            $fileName = time() . '_' . $file->getClientOriginalName();
+            // Cek apakah ada file yang diunggah
+            if ($request->hasFile('file')) {
+                $file = $request->file('file');
+                $fileName = time() . '_' . $file->getClientOriginalName();
 
-            // Store the file
-            $filePath = $file->storeAs('task_attachments', $fileName, 'public');
+                // Store the file
+                $filePath = $file->storeAs('task_attachments', $fileName, 'public');
 
-            // Get full URL for the file (using the app URL)
-            $fullUrl = url('/storage/' . $filePath);
+                // Get full URL for the file (using the app URL)
+                $fullUrl = url('/storage/' . $filePath);
 
-            // Create attachment record
-            $attachment = $task->attachments()->create([
-                'file_name' => $file->getClientOriginalName(),
-                'file_path' => $fullUrl, // Store the complete URL
-                'file_type' => $file->getMimeType(),
-                'file_size' => $file->getSize(),
-                'uploaded_by' => Auth::user()->id
-            ]);
+                // Create attachment record
+                $attachment = $task->attachments()->create([
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_path' => $fullUrl,
+                    'file_type' => $file->getMimeType(),
+                    'file_size' => $file->getSize(),
+                    'uploaded_by' => Auth::user()->id,
+                    'url' => $request->url ?? null // Tambahkan URL jika disediakan
+                ]);
+            }
+            // Cek apakah ada URL yang diberikan
+            else if ($request->has('url')) {
+                // Buat attachment dengan hanya URL
+                $attachment = $task->attachments()->create([
+                    'url' => $request->url,
+                    'uploaded_by' => Auth::user()->id
+                ]);
+            } else {
+                // Jika tidak ada file atau URL
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Either file or URL is required'
+                ], 400);
+            }
 
             // Load user information
             $attachment->load('uploader');

@@ -86,7 +86,7 @@ class TaskController extends Controller
             ], 403);
         }
 
-        // Validate the request
+        // Validate the request with more flexible attachment validation
         $validator = Validator::make($request->all(), [
             'project_id' => 'required|exists:projects,id',
             'title' => 'required|string|max:255',
@@ -94,7 +94,42 @@ class TaskController extends Controller
             'priority' => 'required|in:low,medium,high',
             'due_date' => 'required|date|after_or_equal:today',
             'attachments' => 'nullable|array',
-            'attachments.*' => 'file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:5120',
+            'attachments.*' => [
+                'nullable',
+                'array',
+                function ($attribute, $value, $fail) {
+                    // Validate that each attachment is either a file or has a URL
+                    if (!isset($value['file']) && !isset($value['url'])) {
+                        $fail('Each attachment must have either a file or a URL.');
+                    }
+
+                    // If file is present, validate file
+                    if (isset($value['file'])) {
+                        $fileValidator = Validator::make(
+                            ['file' => $value['file']],
+                            ['file' => 'file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:5120']
+                        );
+
+                        if ($fileValidator->fails()) {
+                            $fail($fileValidator->errors()->first());
+                        }
+                    }
+
+                    // If URL is present, validate URL
+                    if (isset($value['url'])) {
+                        $urlValidator = Validator::make(
+                            ['url' => $value['url']],
+                            ['url' => 'url|max:255']
+                        );
+
+                        if ($urlValidator->fails()) {
+                            $fail($urlValidator->errors()->first());
+                        }
+                    }
+                }
+            ],
+            'assigned' => 'nullable|array',
+            'assigned.*.id' => 'exists:users,id',
         ]);
 
         if ($validator->fails()) {
@@ -105,9 +140,8 @@ class TaskController extends Controller
             ], 422);
         }
 
-        // Get the authenticated user's employee record
+        // Get the authenticated user
         $user = User::with('employee')->where('id', Auth::user()->id)->first();
-        $employee = $user->employee;
 
         // Begin database transaction
         DB::beginTransaction();
@@ -115,43 +149,62 @@ class TaskController extends Controller
         try {
             // Create new task
             $task = Task::create([
-                'project_id' => $request->project_id,
-                'title' => $request->title,
+                'project_id'  => $request->project_id,
+                'title'       => $request->title,
                 'description' => $request->description,
-                'status' => 'todo', // Default status for new task
-                'priority' => $request->priority,
-                'due_date' => $request->due_date,
-                'created_by' => $user->creatorId(),
+                'status'      => 'todo',
+                'priority'    => $request->priority,
+                'due_date'    => $request->due_date,
+                'created_by'  => $user->creatorId(),
             ]);
 
-            // Assign task to the employee themselves
-            $task->assignees()->attach(
-                $user->id,
-                [
-                    'assigned_by'   => $user->id,
-                ]
-            );
+            // Assign users if provided
+            if ($request->has('assigned')) {
+                $userIds = collect($request->assigned)->pluck('id')->toArray();
+                $assignees = [];
+                foreach ($userIds as $userId) {
+                    $assignees[$userId] = [
+                        'assigned_by' => Auth::user()->id
+                    ];
+                }
+                $task->assignees()->attach($assignees);
+            }
 
             // Handle attachments if any
-            if ($request->hasFile('attachments')) {
-                foreach ($request->file('attachments') as $file) {
-                    // Upload file
-                    $fileName = time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
-                    $filePath = 'task_attachments/' . $task->id . '/' . $fileName;
+            if ($request->has('attachments')) {
+                foreach ($request->attachments as $attachment) {
+                    // Handle file attachments
+                    if (isset($attachment['file'])) {
+                        $file = $attachment['file'];
+                        $fileName = time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
+                        $filePath = 'task_attachments/' . $task->id . '/' . $fileName;
 
-                    // Store the file
-                    Storage::disk('public')->put($filePath, file_get_contents($file));
+                        // Store the file
+                        Storage::disk('public')->put($filePath, file_get_contents($file));
+                        $fileUrl = asset('storage/' . $filePath);
 
-                    $fileUrl = asset('storage/' . $filePath);
+                        // Handle URL attachments
+                        // $url_from_request = null;
+                        // if (isset($attachment['url'])) {
+                        //     $url_from_request = $attachment['url'];
+                        // }
 
-                    TaskAttachment::create([
-                        'task_id' => $task->id,
-                        'file_name' => $fileName,
-                        'file_path' => $fileUrl,
-                        'file_size' => $file->getSize(),
-                        'file_type' => $file->getMimeType(),
-                        'uploaded_by' => Auth::user()->id,
-                    ]);
+                        TaskAttachment::create([
+                            'task_id' => $task->id,
+                            'file_name' => $fileName,
+                            'file_path' => $fileUrl,
+                            'file_size' => $file->getSize(),
+                            'file_type' => $file->getMimeType(),
+                            'url' => isset($attachment['url']) ? $attachment['url'] : null,
+                            'uploaded_by' => Auth::user()->id,
+                        ]);
+                    } else if (isset($attachment['url'])) {
+                        TaskAttachment::create([
+                            'task_id' => $task->id,
+                            'url' => $attachment['url'],
+                            'uploaded_by' => Auth::user()->id,
+                        ]);
+                    }
                 }
             }
 
@@ -431,12 +484,12 @@ class TaskController extends Controller
         $isCreator = $task->created_by == Auth::user()->id;
         $canManageAllTasks = Auth::user()->can('Manage All Task');
 
-        if (!$isAssigned && !$isCreator && !$canManageAllTasks) {
-            return response()->json([
-                'status' => false,
-                'message' => 'You are not authorized to view this task',
-            ], 403);
-        }
+        // if (!$isAssigned && !$isCreator && !$canManageAllTasks) {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => 'You are not authorized to view this task',
+        //     ], 403);
+        // }
 
         // Get company timezone for response formatting
         $companyTz = Utility::getCompanySchedule(Auth::user()->creatorId())['company_timezone'];
@@ -466,6 +519,7 @@ class TaskController extends Controller
                 return [
                     'id' => $assignee->id,
                     'name' => $assignee->employee_name(),
+                    'designation' => isset($assignee?->employee) ? $assignee?->employee?->designation?->name : ucfirst($assignee->type),
                     'avatar' => !empty($assignee->user->avatar) ? Storage::url($assignee->user->avatar) : null,
                 ];
             }),
@@ -477,6 +531,7 @@ class TaskController extends Controller
                     'file_path' => $attachment->file_path,
                     'file_size' => $this->formatFileSize($attachment->file_size),
                     'file_type' => $attachment->file_type,
+                    'url' => $attachment->url,
                     'uploaded_by' => [
                         'id' => $uploader->id,
                         'name' => $uploader->employee_name(),
@@ -522,6 +577,38 @@ class TaskController extends Controller
         }
 
         return round($bytes, 2) . ' ' . $units[$i];
+    }
+
+    public function getEmployee()
+    {
+        $companyId = Auth::user()->creatorId(); // Company ID yang ingin Anda gunakan
+
+        // Dapatkan company user
+        // $company = User::where('id', $companyId)
+        //     ->where('type', 'company')
+        //     ->first();
+
+        // Dapatkan semua users yang dibuat oleh company tersebut
+        $employeeUsers = User::where('created_by', $companyId)
+            ->where('id', '!=', $companyId) // Exclude the company itself
+            ->where('type', '!=', 'company admin') // Exclude the company itself
+            ->get()
+            ->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->employee_name(),
+                    'email' => $user->email,
+                    'avatar' => $user->avatar,
+                    'type' => $user->type,
+                    'employee' => $user->type == 'employee' ? $user->employee : null,
+                ];
+            });
+
+
+        return response()->json([
+            'message' => 'Successfully retrieved data',
+            'data' => $employeeUsers
+        ]);
     }
 
     /**

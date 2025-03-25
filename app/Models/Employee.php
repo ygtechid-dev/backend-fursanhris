@@ -37,6 +37,10 @@ class Employee extends Model
         'created_by',
     ];
 
+    protected $hidden = [
+        'password'
+    ];
+
     public function documents()
     {
         return $this->hasMany('App\Models\EmployeeDocument', 'employee_id', 'employee_id')->get();

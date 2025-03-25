@@ -19,13 +19,13 @@ class EventController extends Controller
 
             // Get events where the employee is assigned via the pivot table
             $events = Event::whereHas('employees', function ($query) use ($user) {
-                $query->where('event_employees.employee_id', $user->employee->id);
+                $query->where('event_employees.user_id', $user->employee->id);
             })->get();
 
             $today_date = date('m');
             // Get current month events where the employee is assigned
             $current_month_event = Event::whereHas('employees', function ($query) use ($user) {
-                $query->where('event_employees.employee_id', $user->employee->id);
+                $query->where('event_employees.user_id', $user->employee->id);
             })
                 ->select('id', 'start_date', 'end_date', 'title', 'created_at', 'color')
                 ->whereNotNull(['start_date', 'end_date'])

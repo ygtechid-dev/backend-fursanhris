@@ -14,11 +14,12 @@ return new class extends Migration
         Schema::create('task_attachments', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('task_id');
-            $table->string('file_name');
-            $table->string('file_path');
-            $table->string('file_type');
-            $table->integer('file_size');
-            $table->integer('uploaded_by');
+            $table->string('file_name')->nullable();
+            $table->string('file_path')->nullable();
+            $table->string('file_type')->nullable();
+            $table->integer('file_size')->nullable();
+            $table->integer('uploaded_by')->nullable();
+            $table->string('url')->nullable();
 
             $table->foreign('task_id')->references('id')->on('tasks')->onDelete('cascade');
             // $table->foreign('uploaded_by')->references('id')->on('employees')->onDelete('cascade');

@@ -31,7 +31,7 @@ class Event extends Model
      */
     public function employees()
     {
-        return $this->belongsToMany(Employee::class, 'event_employees')
+        return $this->belongsToMany(User::class, 'event_employees')
             // ->withPivot('status')
             ->withTimestamps();
     }

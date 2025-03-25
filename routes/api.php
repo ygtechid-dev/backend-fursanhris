@@ -71,9 +71,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::prefix('tasks')->group(function () {
                 Route::put('{taskId}/update-status', [Mobile\TaskController::class, 'updateTaskStatus']);
                 Route::put('create-task', [Mobile\TaskController::class, 'createOwnTask']);
+                Route::get('get-employees', [Mobile\TaskController::class, 'getEmployees']);
                 Route::post('{taskId}/add-comment', [Mobile\TaskController::class, 'addComment']);
                 Route::post('{taskId}/add-attachment', [Mobile\TaskController::class, 'addAttachment']);
                 Route::get('{taskId}', [Mobile\TaskController::class, 'getTaskDetail']);
+                Route::get('get-employees', [Mobile\TaskController::class, 'getEmployee']);
             });
         });
 
