@@ -629,6 +629,7 @@ class TaskController extends Controller
                 return [
                     'id' => $assignee->id,
                     'name' => $assignee->employee_name(),
+                    'designation' => isset($assignee?->employee) ? $assignee?->employee?->designation?->name : ucfirst($assignee->type),
                     'avatar' => !empty($assignee->user->avatar) ? Storage::url($assignee->user->avatar) : null,
                 ];
             }),
