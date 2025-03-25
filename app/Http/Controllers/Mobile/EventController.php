@@ -5,58 +5,134 @@ namespace App\Http\Controllers\Mobile;
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\Event;
+use App\Models\Task;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class EventController extends Controller
 {
+    // public function index()
+    // {
+    //     if (Auth::user()->can('Manage Event')) {
+    //         $user = User::with('employee')
+    //             ->where('id', Auth::user()->id)->first();
+
+    //         // Get events where the employee is assigned via the pivot table
+    //         $events = Event::whereHas('employees', function ($query) use ($user) {
+    //             $query->where('event_employees.user_id', $user->employee->id);
+    //         })->get();
+
+    //         $today_date = date('m');
+    //         // Get current month events where the employee is assigned
+    //         $current_month_event = Event::whereHas('employees', function ($query) use ($user) {
+    //             $query->where('event_employees.user_id', $user->employee->id);
+    //         })
+    //             ->select('id', 'start_date', 'end_date', 'title', 'created_at', 'color')
+    //             ->whereNotNull(['start_date', 'end_date'])
+    //             ->whereMonth('start_date', $today_date)
+    //             ->whereMonth('end_date', $today_date)
+    //             ->get();
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Event retrieved successfully',
+    //             'data' => [
+    //                 // 'arrEvents' => $arrEvents,
+    //                 'events' => $events,
+    //                 'current_month_event' => $current_month_event,
+    //             ]
+    //         ], 200);
+    //     } else {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Permission denied.',
+    //         ], 403);
+    //     }
+    // }
+
     public function index()
     {
         if (Auth::user()->can('Manage Event')) {
             $user = User::with('employee')
-                ->where('id', Auth::user()->id)->first();
+                ->where('id', Auth::user()->id)
+                ->first();
 
-            // Get events where the employee is assigned via the pivot table
+            // Gabungkan Events dan Tasks dalam satu query
+            $calendarItems = collect();
+
+            // Retrieve Events
             $events = Event::whereHas('employees', function ($query) use ($user) {
                 $query->where('event_employees.user_id', $user->employee->id);
-            })->get();
-
-            $today_date = date('m');
-            // Get current month events where the employee is assigned
-            $current_month_event = Event::whereHas('employees', function ($query) use ($user) {
-                $query->where('event_employees.user_id', $user->employee->id);
             })
-                ->select('id', 'start_date', 'end_date', 'title', 'created_at', 'color')
-                ->whereNotNull(['start_date', 'end_date'])
-                ->whereMonth('start_date', $today_date)
-                ->whereMonth('end_date', $today_date)
-                ->get();
+                ->select('id', 'title', 'start_date', 'end_date', 'color', 'description', 'created_by')
+                ->get()
+                ->map(function ($event) {
+                    return [
+                        'id' => $event->id,
+                        'title' => $event->title,
+                        'start' => $event->start_date,
+                        'end' => $event->end_date,
+                        'color' => $event->color ?? '#3788d8', // Default event color
+                        'type' => 'event',
+                        'status' => $event->status ?? null,
+                        'priority' => $event->priority ?? null,
+                        'project_id' => $event->project_id ?? null,
+                        'description' => $event->description,
+                        'created_by' => $event->created_by
+                    ];
+                });
 
-            // $arrEvents = [];
-            // foreach ($events as $event) {
-            //     $arr['id']    = $event['id'];
-            //     $arr['title'] = $event['title'];
-            //     $arr['start_date'] = $event['start_date'];
-            //     $arr['end_date']   = $event['end_date'];
-            //     $arr['color'] = $event['color'];
-            //     $arrEvents[] = $arr;
-            // }
+            // Retrieve Tasks
+            $tasks = Task::whereHas('assignees', function ($query) use ($user) {
+                $query->where('task_assignees.user_id', $user->id);
+            })
+                ->select('id', 'title', 'due_date', 'status', 'priority', 'project_id', 'description', 'created_by')
+                ->get()
+                ->map(function ($task) {
+                    return [
+                        'id' => $task->id,
+                        'title' => $task->title,
+                        'start' => $task->due_date,
+                        'end' => $task->due_date,
+                        'color' => $this->getTaskColor($task->status),
+                        'type' => 'task',
+                        'status' => $task->status,
+                        'priority' => $task->priority,
+                        'project_id' => $task->project_id,
+                        'description' => $task->description,
+                        'created_by' => $task->created_by
+                    ];
+                });
+
+            // Gabungkan Events dan Tasks
+            $calendarItems = $events->merge($tasks)->sortBy('start')->values();
 
             return response()->json([
                 'status' => true,
-                'message' => 'Event retrieved successfully',
-                'data' => [
-                    // 'arrEvents' => $arrEvents,
-                    'events' => $events,
-                    'current_month_event' => $current_month_event,
-                ]
+                'message' => 'Calendar items retrieved successfully',
+                'data' => $calendarItems
             ], 200);
         } else {
             return response()->json([
                 'status' => false,
                 'message' => 'Permission denied.',
             ], 403);
+        }
+    }
+
+    // Helper method to assign colors based on task status
+    private function getTaskColor($status)
+    {
+        switch ($status) {
+            case 'todo':
+                return '#FF6B6B'; // Red for todo
+            case 'in_progress':
+                return '#4ECDC4'; // Teal for in progress
+            case 'done':
+                return '#45B7D1'; // Blue for done
+            default:
+                return '#A8A8A8'; // Grey for undefined status
         }
     }
 }
