@@ -41,6 +41,15 @@ class Employee extends Model
         'password'
     ];
 
+    protected $casts = [
+        'documents' => 'json'
+    ];
+
+    public function company()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function documents()
     {
         return $this->hasMany('App\Models\EmployeeDocument', 'employee_id', 'employee_id')->get();
@@ -62,7 +71,6 @@ class Employee extends Model
             return "$first_name $last_name";
         }
     }
-
 
     public static function login_user($name)
     {

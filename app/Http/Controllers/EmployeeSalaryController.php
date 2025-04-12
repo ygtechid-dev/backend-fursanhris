@@ -11,11 +11,16 @@ class EmployeeSalaryController extends Controller
     public function index()
     {
         if (Auth::user()->can('Manage Set Salary')) {
-            $employees = Employee::where(
-                [
-                    'created_by' => Auth::user()->creatorId(),
-                ]
-            )->get();
+
+            if (Auth::user()->type == 'super admin') {
+                $employees = Employee::with('company')->get();
+            } else {
+                $employees = Employee::with('company')->where(
+                    [
+                        'created_by' => Auth::user()->creatorId(),
+                    ]
+                )->get();
+            }
 
             // Tambahkan net_salary untuk setiap employee
             foreach ($employees as $employee) {

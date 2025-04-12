@@ -26,8 +26,10 @@ class PromotionController extends Controller
             ], 403);
         }
 
-        $promotions = Promotion::where('created_by', Auth::user()->creatorId())
-            ->with(['employee', 'designation'])
+        $promotions = Promotion::when(Auth::user()->type != 'super admin', function ($q) {
+            $q->where('created_by', Auth::user()->creatorId());
+        })
+            ->with(['company', 'employee', 'designation'])
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($promotion) {
@@ -35,7 +37,9 @@ class PromotionController extends Controller
             });
 
         // Count promotions by month
-        $promotionsByMonth = Promotion::where('created_by', Auth::user()->creatorId())
+        $promotionsByMonth = Promotion::when(Auth::user()->type != 'super admin', function ($q) {
+            $q->where('created_by', Auth::user()->creatorId());
+        })
             ->select(DB::raw('MONTH(promotion_date) as month'), DB::raw('count(*) as count'))
             ->groupBy(DB::raw('MONTH(promotion_date)'))
             ->pluck('count', 'month')
@@ -279,6 +283,8 @@ class PromotionController extends Controller
             'promotion_title' => $promotion->promotion_title,
             'promotion_date' => $promotion->promotion_date,
             'description' => $promotion->description,
+            'created_by' => $promotion->created_by,
+            'company' => $promotion->company,
             'created_at' => $promotion->created_at->format('Y-m-d H:i:s'),
             'updated_at' => $promotion->updated_at->format('Y-m-d H:i:s')
         ];

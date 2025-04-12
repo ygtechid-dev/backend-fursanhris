@@ -15,8 +15,14 @@ class BranchController extends Controller
     public function index()
     {
         if (Auth::user()->can('Manage Branch')) {
-
-            $branches = Branch::where('created_by', '=', Auth::user()->creatorId())->get();
+            $user = Auth::user();
+            if (Auth::user()->type == 'super admin') {
+                $branches = Branch::with('company')->get();
+            } else {
+                $branches = Branch::with('company')
+                    ->where('created_by', '=', Auth::user()->creatorId())
+                    ->get();
+            }
 
             return response()->json([
                 'status' => true,
@@ -52,7 +58,7 @@ class BranchController extends Controller
 
             $branch             = new Branch();
             $branch->name       = $request->name;
-            $branch->created_by = Auth::user()->creatorId();
+            $branch->created_by = Auth::user()->type == 'super admin' ? $request->created_by :  Auth::user()->creatorId();
             $branch->save();
 
             return response()->json([
@@ -94,36 +100,37 @@ class BranchController extends Controller
     public function update(Request $request, Branch $branch)
     {
         if (Auth::user()->can('Edit Branch')) {
-            if ($branch->created_by == Auth::user()->creatorId()) {
-                $validator = Validator::make(
-                    $request->all(),
-                    [
-                        'name' => 'required',
-                    ]
-                );
-                if ($validator->fails()) {
-                    $messages = $validator->getMessageBag();
-
-                    return response()->json([
-                        'status'   => false,
-                        'message'   => $messages->first()
-                    ], 400);
-                }
-
-                $branch->name = $request->name;
-                $branch->save();
+            // if ($branch->created_by == Auth::user()->creatorId()) {
+            $validator = Validator::make(
+                $request->all(),
+                [
+                    'name' => 'required',
+                ]
+            );
+            if ($validator->fails()) {
+                $messages = $validator->getMessageBag();
 
                 return response()->json([
-                    'status' => true,
-                    'message' => 'Branch successfully updated',
-                    'data' => $branch
-                ], 200);
-            } else {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Permission denied.',
-                ], 403);
+                    'status'   => false,
+                    'message'   => $messages->first()
+                ], 400);
             }
+
+            $branch->name = $request->name;
+            $branch->created_by = Auth::user()->type == 'super admin' ? $request->created_by :  Auth::user()->creatorId();
+            $branch->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Branch successfully updated',
+                'data' => $branch
+            ], 200);
+            // } else {
+            //     return response()->json([
+            //         'status' => false,
+            //         'message' => 'Permission denied.',
+            //     ], 403);
+            // }
         } else {
             return response()->json([
                 'status' => false,

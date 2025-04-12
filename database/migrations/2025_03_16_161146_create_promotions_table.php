@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('promotion_title');
             $table->date('promotion_date');
             $table->string('description');
-            $table->string('created_by');
+            $table->integer('created_by');
             $table->timestamps();
         });
     }

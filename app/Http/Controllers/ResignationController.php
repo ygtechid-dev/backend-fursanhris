@@ -32,10 +32,10 @@ class ResignationController extends Controller
         // Build query based on user role
         $query = Resignation::query();
 
-        // Only get resignations created by current user's creator
-        $query->where('created_by', $user->creatorId());
-
-        $resignations = $query->with(['employee'])
+        $resignations = $query->with(['company', 'employee'])
+            ->when(Auth::user()->type != 'super admin', function ($q) use ($user) {
+                $q->where('created_by', $user->creatorId());
+            })
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($resignation) use ($companyTz) {
@@ -45,10 +45,14 @@ class ResignationController extends Controller
         // Count resignations by status (upcoming and processed)
         $today = date('Y-m-d');
         $resignationCounts = [
-            'upcoming' => Resignation::where('created_by', Auth::user()->creatorId())
+            'upcoming' => Resignation::when(Auth::user()->type != 'super admin', function ($q) use ($user) {
+                $q->where('created_by', $user->creatorId());
+            })
                 ->where('resignation_date', '>', $today)
                 ->count(),
-            'processed' => Resignation::where('created_by', Auth::user()->creatorId())
+            'processed' => Resignation::when(Auth::user()->type != 'super admin', function ($q) use ($user) {
+                $q->where('created_by', $user->creatorId());
+            })
                 ->where('resignation_date', '<=', $today)
                 ->count(),
         ];
@@ -262,6 +266,8 @@ class ResignationController extends Controller
                 ->setTimezone($companyTz)
                 ->format('d M Y'),
             'description' => $resignation->description,
+            'created_by' => $resignation->created_by,
+            'company' => $resignation->company,
             'status' => date('Y-m-d') > $resignation->resignation_date ? 'Processed' : 'Upcoming',
             'created_at' => $resignation->created_at->format('Y-m-d H:i:s'),
             'created_at_formatted' => $resignation->created_at

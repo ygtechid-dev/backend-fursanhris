@@ -30,6 +30,11 @@ class Payslip extends Model
         'created_by',
     ];
 
+    public function company()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     // Relasi dengan employee
     public function employee()
     {
@@ -92,14 +97,16 @@ class Payslip extends Model
     // Generate Payslip untuk satu bulan
     public static function generatePayslip($month, $year, $created_by = null)
     {
-        if ($created_by == null) {
-            $created_by = Auth::user()->creatorId();
+        // if ($created_by == null) {
+        //     $created_by = Auth::user()->creatorId();
+        // }
+
+        if (Auth::user()->type == 'super admin') {
+            $employees = Employee::get();
+        } else {
+            $employees = Employee::where('created_by', $created_by)->get();
         }
-
-        $employees = Employee::where('created_by', $created_by)->get();
         $payslips = [];
-
-        //TODO: Tambahkan pengecualian untuk yang resign atau termination
 
         foreach ($employees as $employee) {
             // Cek apakah payslip sudah ada
@@ -123,7 +130,7 @@ class Payslip extends Model
                 $payslip->year = $year;
                 $payslip->salary_type = $employee->salary_type;
                 $payslip->basic_salary = $basic_salary;
-                $payslip->created_by = $created_by;
+                $payslip->created_by = Auth::user()->type != 'super admin' ? $created_by : $employee->created_by;
 
                 // Hitung Allowances (tunjangan)
                 $totalAllowance = 0;
@@ -131,7 +138,10 @@ class Payslip extends Model
                 // Allowance permanen
                 $permanentAllowances = Allowance::where('employee_id', $employee->id)
                     ->where('type', 'permanent')
-                    ->where('created_by', $created_by)
+                    // ->where('created_by', $created_by)
+                    ->when(Auth::user()->type != 'super admin', function ($q) use ($created_by) {
+                        $q->where('created_by', $created_by);
+                    })
                     ->get();
 
                 // Allowance bulanan
@@ -139,7 +149,10 @@ class Payslip extends Model
                     ->where('type', 'monthly')
                     ->where('month', sprintf('%02d', $month)) // Format menjadi 2 digit (03 bukan 3)
                     ->where('year', (int)$year)
-                    ->where('created_by', $created_by)
+                    // ->where('created_by', $created_by)
+                    ->when(Auth::user()->type != 'super admin', function ($q) use ($created_by) {
+                        $q->where('created_by', $created_by);
+                    })
                     ->get();
 
                 $allowances = $permanentAllowances->merge($monthlyAllowances);
@@ -156,7 +169,10 @@ class Payslip extends Model
                 // Deduction permanen
                 $permanentDeductions = Deduction::where('employee_id', $employee->id)
                     ->where('type', 'permanent')
-                    ->where('created_by', $created_by)
+                    // ->where('created_by', $created_by)
+                    ->when(Auth::user()->type != 'super admin', function ($q) use ($created_by) {
+                        $q->where('created_by', $created_by);
+                    })
                     ->get();
 
                 // Deduction bulanan
@@ -164,7 +180,10 @@ class Payslip extends Model
                     ->where('type', 'monthly')
                     ->where('month', sprintf('%02d', $month)) // Format menjadi 2 digit (03 bukan 3)
                     ->where('year', (int)$year)
-                    ->where('created_by', $created_by)
+                    // ->where('created_by', $created_by)
+                    ->when(Auth::user()->type != 'super admin', function ($q) use ($created_by) {
+                        $q->where('created_by', $created_by);
+                    })
                     ->get();
 
                 $deductions = $permanentDeductions->merge($monthlyDeductions);

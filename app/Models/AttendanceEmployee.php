@@ -31,7 +31,8 @@ class AttendanceEmployee extends Model
         'clock_out_latitude',
         'clock_out_longitude',
         'clock_out_photo',
-        'clock_out_notes'
+        'clock_out_notes',
+        'created_by'
     ];
 
     public function employee()
@@ -39,14 +40,22 @@ class AttendanceEmployee extends Model
         return $this->belongsTo('App\Models\Employee', 'employee_id');
     }
 
+    public function company()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function getAllFilteredAttendance($request, $companyTz = 'UTC')
     {
         // Start with base query for non-employee users
-        $query = $this->with('employee');
+        $query = $this->with(['employee', 'company']);
 
-        // Get employee IDs based on filters
-        $employeeQuery = Employee::select('id')
-            ->where('created_by', Auth::user()->creatorId());
+        if (Auth::user()->type == 'super admin') {
+            $employeeQuery = Employee::select('id');
+        } else {
+            $employeeQuery = Employee::select('id')
+                ->where('created_by', Auth::user()->creatorId());
+        }
 
         if (!empty($request->branch)) {
             $employeeQuery->where('branch_id', $request->branch);

@@ -40,6 +40,12 @@ class Termination extends Model
         'is_mobile_access_allowed' => 'boolean',
         'documents' => 'array',
     ];
+
+    public function company_created_by()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     /**
      * Get the user associated with the termination.
      */

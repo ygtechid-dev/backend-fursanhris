@@ -34,13 +34,10 @@ class TerminationController extends Controller
         // Query terminations
         $query = Termination::query();
 
-        // If user is not admin, only show terminations related to their company
-        // if (!$user->hasRole('admin')) {
-        //     $query->where('company_id', $user->creatorId());
-        // }
-
-        $terminations = $query->with(['user', 'employee', 'terminationType', 'terminatedBy'])
-            ->where('created_by', Auth::user()->creatorId())
+        $terminations = $query->with(['company_created_by', 'user', 'employee', 'terminationType', 'terminatedBy'])
+            ->when(Auth::user()->type != 'super admin', function ($q) {
+                $q->where('created_by', Auth::user()->creatorId());
+            })
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($termination) use ($companyTz) {
@@ -55,7 +52,9 @@ class TerminationController extends Controller
         ];
 
         $statusCounts = Termination::select('status', DB::raw('count(*) as count'))
-            ->where('created_by', Auth::user()->creatorId())
+            ->when(Auth::user()->type != 'super admin', function ($q) {
+                $q->where('created_by', Auth::user()->creatorId());
+            })
             ->groupBy('status')
             ->pluck('count', 'status')
             ->toArray();
@@ -382,6 +381,8 @@ class TerminationController extends Controller
             'notice_date' => $termination->notice_date->setTimezone($companyTz)->format('Y-m-d'),
             'reason' => $termination->reason,
             'description' => $termination->description,
+            'created_by' => $termination->created_by,
+            'company' => $termination->company_created_by,
             'status' => $termination->status,
             'is_mobile_access_allowed' => $termination->is_mobile_access_allowed,
             'terminated_by_id' => $termination->terminatedBy->id,

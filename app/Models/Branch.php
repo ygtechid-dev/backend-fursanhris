@@ -10,4 +10,9 @@ class Branch extends Model
         'name',
         'created_by'
     ];
+
+    public function company()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('subject');
             $table->date('warning_date');
             $table->string('description');
-            $table->string('created_by');
+            $table->integer('created_by');
             $table->timestamps();
         });
     }

@@ -14,6 +14,11 @@ class Resignation extends Model
         'created_by',
     ];
 
+    public function company()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function employee()
     {
         return $this->belongsTo(Employee::class, 'employee_id');

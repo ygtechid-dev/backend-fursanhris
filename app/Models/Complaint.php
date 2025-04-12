@@ -16,6 +16,11 @@ class Complaint extends Model
         'created_by',
     ];
 
+    public function company()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     /**
      * Mendapatkan karyawan yang mengajukan keluhan
      */

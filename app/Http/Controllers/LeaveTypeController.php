@@ -13,7 +13,11 @@ class LeaveTypeController extends Controller
     public function index()
     {
         if (Auth::user()->can('Manage Leave Type')) {
-            $leavetypes = LeaveType::where('created_by', '=', Auth::user()->creatorId())->get();
+            if (Auth::user()->type == 'super admin') {
+                $leavetypes = LeaveType::get();
+            } else {
+                $leavetypes = LeaveType::where('created_by', '=', Auth::user()->creatorId())->get();
+            }
 
             return response()->json([
                 'status' => true,

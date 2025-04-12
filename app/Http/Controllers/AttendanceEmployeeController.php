@@ -27,53 +27,56 @@ class AttendanceEmployeeController extends Controller
             $department = Department::where('created_by', Auth::user()->creatorId())->get();
             $department->prepend('All', '');
 
-            if (Auth::user()->type == 'employee') {
-                $emp = !empty(Auth::user()->employee) ? Auth::user()->employee->id : 0;
+            if (Auth::user()->type == 'company') {
+                // $emp = !empty(Auth::user()->employee) ? Auth::user()->employee->id : 0;
 
-                $attendanceEmployee = AttendanceEmployee::where('employee_id', $emp);
+                // $attendanceEmployee = AttendanceEmployee::where('created_by', Auth::user()->creatorId());
 
-                if ($request->type == 'monthly' && !empty($request->month)) {
-                    $month = date('m', strtotime($request->month));
-                    $year  = date('Y', strtotime($request->month));
+                // if ($request->type == 'monthly' && !empty($request->month)) {
+                //     $month = date('m', strtotime($request->month));
+                //     $year  = date('Y', strtotime($request->month));
 
 
-                    $start_date = date($year . '-' . $month . '-01');
-                    $end_date = date('Y-m-t', strtotime('01-' . $month . '-' . $year));
+                //     $start_date = date($year . '-' . $month . '-01');
+                //     $end_date = date('Y-m-t', strtotime('01-' . $month . '-' . $year));
 
-                    // old date
-                    // $end_date   = date($year . '-' . $month . '-t');
+                //     // old date
+                //     // $end_date   = date($year . '-' . $month . '-t');
 
-                    $attendanceEmployee->whereBetween(
-                        'date',
-                        [
-                            $start_date,
-                            $end_date,
-                        ]
-                    );
-                } elseif ($request->type == 'daily' && !empty($request->date)) {
-                    $attendanceEmployee->where('date', $request->date);
-                } else {
-                    $month      = date('m');
-                    $year       = date('Y');
-                    $start_date = date($year . '-' . $month . '-01');
-                    $end_date = date('Y-m-t', strtotime('01-' . $month . '-' . $year));
+                //     $attendanceEmployee->whereBetween(
+                //         'date',
+                //         [
+                //             $start_date,
+                //             $end_date,
+                //         ]
+                //     );
+                // } elseif ($request->type == 'daily' && !empty($request->date)) {
+                //     $attendanceEmployee->where('date', $request->date);
+                // } else {
+                //     $month      = date('m');
+                //     $year       = date('Y');
+                //     $start_date = date($year . '-' . $month . '-01');
+                //     $end_date = date('Y-m-t', strtotime('01-' . $month . '-' . $year));
 
-                    // old date
-                    // $end_date   = date($year . '-' . $month . '-t');
+                //     // old date
+                //     // $end_date   = date($year . '-' . $month . '-t');
 
-                    $attendanceEmployee->whereBetween(
-                        'date',
-                        [
-                            $start_date,
-                            $end_date,
-                        ]
-                    );
-                }
+                //     $attendanceEmployee->whereBetween(
+                //         'date',
+                //         [
+                //             $start_date,
+                //             $end_date,
+                //         ]
+                //     );
+                // }
 
-                $attendanceEmployee = $attendanceEmployee->get();
-            } else {
+                // $attendanceEmployee = $attendanceEmployee->get();
+
                 $companyTz = Utility::getCompanySchedule(Auth::user()->creatorId())['company_timezone'];
                 $attendanceEmployee = $this->attendance->getAllFilteredAttendance($request, $companyTz);
+            } else {
+                // $companyTz = Utility::getCompanySchedule(Auth::user()->creatorId())['company_timezone'];
+                $attendanceEmployee = $this->attendance->getAllFilteredAttendance($request);
             }
 
             return response()->json(

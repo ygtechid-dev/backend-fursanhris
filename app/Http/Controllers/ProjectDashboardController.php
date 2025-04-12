@@ -12,6 +12,25 @@ use Illuminate\Support\Facades\Auth;
 class ProjectDashboardController extends Controller
 {
     /**
+     * Show project by project ic
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function showProject(Request $request)
+    {
+        // Get current user
+        $user = Auth::user();
+        // $companyId = $user->creatorId();
+        $projectId = $request->query('projectId');
+
+        $project = Project::with('members')->find($projectId);
+
+        // Return all statistics
+        return response()->json($project);
+    }
+
+    /**
      * Get project management dashboard statistics
      *
      * @param Request $request
@@ -209,7 +228,9 @@ class ProjectDashboardController extends Controller
     {
         // If project ID is specified, only return stats for that project
         if ($projectId) {
-            $project = Project::where('created_by', $companyId)
+            $project = Project::when(Auth::user()->type != 'super admin', function ($q) use ($companyId) {
+                $q->where('created_by', $companyId);
+            })
                 ->where('id', $projectId)
                 ->first();
 
@@ -231,19 +252,27 @@ class ProjectDashboardController extends Controller
         }
 
         // Otherwise, return stats for all projects
-        $activeCount = Project::where('created_by', $companyId)
+        $activeCount = Project::when(Auth::user()->type != 'super admin', function ($q) use ($companyId) {
+            $q->where('created_by', $companyId);
+        })
             ->where('status', 'active')
             ->count();
 
-        $onHoldCount = Project::where('created_by', $companyId)
+        $onHoldCount = Project::when(Auth::user()->type != 'super admin', function ($q) use ($companyId) {
+            $q->where('created_by', $companyId);
+        })
             ->where('status', 'on_hold')
             ->count();
 
-        $completedCount = Project::where('created_by', $companyId)
+        $completedCount = Project::when(Auth::user()->type != 'super admin', function ($q) use ($companyId) {
+            $q->where('created_by', $companyId);
+        })
             ->where('status', 'completed')
             ->count();
 
-        $totalCount = Project::where('created_by', $companyId)->count();
+        $totalCount = Project::when(Auth::user()->type != 'super admin', function ($q) use ($companyId) {
+            $q->where('created_by', $companyId);
+        })->count();
 
         return [
             'active' => $activeCount,
@@ -263,7 +292,9 @@ class ProjectDashboardController extends Controller
     private function getTaskStats($companyId, $projectId = null)
     {
         $query = Task::whereHas('project', function ($query) use ($companyId) {
-            $query->where('created_by', $companyId);
+            if (Auth::user()->type == 'company') {
+                $query->where('created_by', $companyId);
+            }
         });
 
         if ($projectId) {
@@ -295,7 +326,9 @@ class ProjectDashboardController extends Controller
     private function getPriorityStats($companyId, $projectId = null)
     {
         $query = Task::whereHas('project', function ($query) use ($companyId) {
-            $query->where('created_by', $companyId);
+            if (Auth::user()->type == 'company') {
+                $query->where('created_by', $companyId);
+            }
         });
 
         if ($projectId) {
@@ -327,7 +360,9 @@ class ProjectDashboardController extends Controller
 
         $query = Task::with('project')
             ->whereHas('project', function ($query) use ($companyId) {
-                $query->where('created_by', $companyId);
+                if (Auth::user()->type == 'company') {
+                    $query->where('created_by', $companyId);
+                }
             })
             ->whereBetween('due_date', [$today, $twoWeeksFromNow])
             ->where('status', '!=', 'done')

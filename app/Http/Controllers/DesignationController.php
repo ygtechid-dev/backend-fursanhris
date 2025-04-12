@@ -17,8 +17,11 @@ class DesignationController extends Controller
     public function index(Request $request)
     {
         if (Auth::user()->can('Manage Designation')) {
-
-            $designations = Designation::query()->where('created_by', '=', Auth::user()->creatorId())->with('department.branch');
+            if (Auth::user()->type == 'super admin') {
+                $designations = Designation::with(['company', 'department.branch']);
+            } else {
+                $designations = Designation::query()->where('created_by', '=', Auth::user()->creatorId())->with('department.branch');
+            }
 
             if ($request->has('branch_id')) {
                 $designations->where('branch_id', $request->branch_id);
@@ -62,7 +65,9 @@ class DesignationController extends Controller
             }
 
             try {
-                $branch = Department::where('id', $request->department_id)->where('created_by', '=', Auth::user()->creatorId())->first()->branch->id;
+                $branch = Department::where('id', $request->department_id)->when(Auth::user()->type != 'super admin', function ($q) {
+                    $q->where('created_by', Auth::user()->creatorId());
+                })->first()->branch->id;
             } catch (Exception $e) {
                 $branch = null;
             }
@@ -71,7 +76,7 @@ class DesignationController extends Controller
             $designation->branch_id     = $branch;
             $designation->department_id = $request->department_id;
             $designation->name          = $request->name;
-            $designation->created_by    = Auth::user()->creatorId();
+            $designation->created_by    = Auth::user()->type == 'super admin' ? $request->created_by :  Auth::user()->creatorId();
 
             $designation->save();
 
@@ -92,46 +97,49 @@ class DesignationController extends Controller
     public function update(Request $request, Designation $designation)
     {
         if (Auth::user()->can('Edit Designation')) {
-            if ($designation->created_by == Auth::user()->creatorId()) {
-                $validator = Validator::make(
-                    $request->all(),
-                    [
-                        'branch_id' => 'required',
-                        'department_id' => 'required',
-                        'name' => 'required|max:20',
-                    ]
-                );
-                if ($validator->fails()) {
-                    $messages = $validator->getMessageBag();
-
-                    return response()->json([
-                        'status'   => false,
-                        'message'   => $messages->first()
-                    ], 400);
-                }
-
-                try {
-                    $branch = Department::where('id', $request->department_id)->where('created_by', '=', Auth::user()->creatorId())->first()->branch->id;
-                } catch (Exception $e) {
-                    $branch = null;
-                }
-
-                $designation->name          = $request->name;
-                $designation->branch_id     = $branch;
-                $designation->department_id = $request->department_id;
-                $designation->save();
+            // if ($designation->created_by == Auth::user()->creatorId()) {
+            $validator = Validator::make(
+                $request->all(),
+                [
+                    'branch_id' => 'required',
+                    'department_id' => 'required',
+                    'name' => 'required|max:20',
+                ]
+            );
+            if ($validator->fails()) {
+                $messages = $validator->getMessageBag();
 
                 return response()->json([
-                    'status' => true,
-                    'message' => 'Designation  successfully updated.',
-                    'data' => $designation,
-                ], 201);
-            } else {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Permission denied.',
-                ], 403);
+                    'status'   => false,
+                    'message'   => $messages->first()
+                ], 400);
             }
+
+            try {
+                $branch = Department::where('id', $request->department_id)->when(Auth::user()->type != 'super admin', function ($q) {
+                    $q->where('created_by', Auth::user()->creatorId());
+                })->first()->branch->id;
+            } catch (Exception $e) {
+                $branch = null;
+            }
+
+            $designation->name          = $request->name;
+            $designation->branch_id     = $branch;
+            $designation->department_id = $request->department_id;
+            $designation->created_by = Auth::user()->type == 'super admin' ? $request->created_by :  Auth::user()->creatorId();
+            $designation->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Designation  successfully updated.',
+                'data' => $designation,
+            ], 201);
+            // } else {
+            //     return response()->json([
+            //         'status' => false,
+            //         'message' => 'Permission denied.',
+            //     ], 403);
+            // }
         } else {
             return response()->json([
                 'status' => false,

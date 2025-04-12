@@ -32,7 +32,7 @@ return new class extends Migration
             $table->boolean('dark_mode')->default(0);
             $table->string('messenger_color')->default('#2180f3');
             $table->integer('is_disable')->default('1');
-            $table->string('created_by');
+            $table->integer('created_by');
             $table->rememberToken();
             $table->timestamps();
         });

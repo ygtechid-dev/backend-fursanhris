@@ -34,9 +34,10 @@ class ComplaintController extends Controller
         // Get complaints based on permissions
         $query = Complaint::query();
 
-
-        $complaints = $query->with(['complaintFrom', 'complaintAgainst'])
-            ->where('created_by', Auth::user()->creatorId())
+        $complaints = $query->with(['company', 'complaintFrom', 'complaintAgainst'])
+            ->when(Auth::user()->type != 'super admin', function ($q) {
+                $q->where('created_by', Auth::user()->creatorId());
+            })
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($complaint) use ($companyTz) {
@@ -288,6 +289,8 @@ class ComplaintController extends Controller
             'id' => $complaint->id,
             'title' => $complaint->title,
             'complaint_date' => $complaint->complaint_date,
+            'created_by' => $complaint->created_by,
+            'company' => $complaint->company,
             'formatted_date' => \Carbon\Carbon::parse($complaint->complaint_date)
                 ->setTimezone($timezone)
                 ->format('d M Y'),

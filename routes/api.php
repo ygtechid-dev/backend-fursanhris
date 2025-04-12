@@ -47,7 +47,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Route untuk mobile
     Route::middleware(CheckPlatformAccess::class . ':mobile')->prefix('mobile')->group(function () {
         Route::post('/update-account-profile', [AuthenticationController::class, 'updateAccountProfile']);
+        Route::post('/resign', [Mobile\ResignationController::class, 'store']);
         Route::get('/get-employee-working-period', [Mobile\AttendanceEmployeeController::class, 'getEmployeeWorkingPeriod']);
+
+        Route::get('/profile', [AuthenticationController::class, 'checkAuth']);
+        Route::get('/office-assets', [Mobile\AssetController::class, 'index']);
 
         /** Leave */
         Route::prefix('leaves')->group(function () {
@@ -130,7 +134,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
         /** User */
         Route::get('/get-users', [Controllers\UserController::class, 'getUser']);
 
-
         /** Employee Allowance */
         Route::get('/employees/{id}/allowances', [Controllers\EmployeeAllowanceController::class, 'getAllowances']);
         Route::post('/employees/{id}/allowances', [Controllers\EmployeeAllowanceController::class, 'store']);
@@ -157,14 +160,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/update-payment-status/{id}', [Controllers\PayslipController::class, 'updatePaymentStatus']);
             Route::get('{id}/export-pdf', [Controllers\PayslipController::class, 'getPayslipPdf']);
             Route::post('generate', [Controllers\PayslipController::class, 'generatePayslips']);
+            Route::delete('/{id}', [Controllers\PayslipController::class, 'destroy']);
         });
 
         /** Project */
         Route::prefix('project-dashboard')->group(function () {
+            Route::get('/show', [App\Http\Controllers\ProjectDashboardController::class, 'showProject']);
             Route::get('/stats', [App\Http\Controllers\ProjectDashboardController::class, 'getStats']);
             Route::get('/project-completion', [App\Http\Controllers\ProjectDashboardController::class, 'getProjectCompletion']);
             Route::get('/recent-activities', [App\Http\Controllers\ProjectDashboardController::class, 'getRecentActivities']);
         });
+
         Route::prefix('projects')->group(function () {
             Route::get('/', [Controllers\ProjectController::class, 'index']);
             Route::post('/', [Controllers\ProjectController::class, 'store']);

@@ -15,6 +15,11 @@ class Department extends Model
 
     public function branch()
     {
-        return $this->belongsTo('App\Models\Branch', 'branch_id');
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

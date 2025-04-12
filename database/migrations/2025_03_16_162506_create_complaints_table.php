@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('title');
             $table->date('complaint_date');
             $table->string('description');
-            $table->string('created_by');
+            $table->integer('created_by');
             $table->timestamps();
         });
     }

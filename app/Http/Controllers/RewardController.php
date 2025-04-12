@@ -30,16 +30,19 @@ class RewardController extends Controller
         // Query rewards
         $query = Reward::query();
 
-
-        $rewards = $query->with(['employee', 'rewardType'])
-            ->where('created_by', $user->creatorId())
+        $rewards = $query->with(['company', 'employee', 'rewardType'])
+            ->when(Auth::user()->type != 'super admin', function ($q) use ($user) {
+                $q->where('created_by', $user->creatorId());
+            })
             ->orderBy('created_at', 'desc')
             ->get();
 
         // Count rewards by type
         $rewardCounts = DB::table('rewards')
             ->select('reward_type_id', DB::raw('count(*) as count'))
-            ->where('created_by', $user->creatorId())
+            ->when(Auth::user()->type != 'super admin', function ($q) use ($user) {
+                $q->where('created_by', $user->creatorId());
+            })
             ->groupBy('reward_type_id')
             ->pluck('count', 'reward_type_id')
             ->toArray();

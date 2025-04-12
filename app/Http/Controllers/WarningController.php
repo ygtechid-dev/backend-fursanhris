@@ -29,21 +29,12 @@ class WarningController extends Controller
         $employee = $user->employee;
         $companyTz = Utility::getCompanySchedule(Auth::user()->creatorId())['company_timezone'];
 
-        // Get warnings based on role
-        // If user has admin role or can manage all warnings, show all warnings
-        // Otherwise show only warnings related to the employee
         $query = Warning::query();
 
-        // if (!Auth::user()->can('Manage All Warnings')) {
-        //     // Show warnings where current employee is the recipient or issuer
-        //     $query->where(function ($q) use ($employee) {
-        //         $q->where('warning_to', $employee->id)
-        //             ->orWhere('warning_by', $employee->id);
-        //     });
-        // }
-
-        $warnings = $query->with(['warningTo.user', 'warningBy.user'])
-            ->where('created_by', Auth::user()->creatorId())
+        $warnings = $query->with(['company', 'warningTo.user', 'warningBy.user'])
+            ->when(Auth::user()->type != 'super admin', function ($q) {
+                $q->where('created_by', Auth::user()->creatorId());
+            })
             ->orderBy('warning_date', 'desc')
             ->get()
             ->map(function ($warning) use ($companyTz) {
@@ -56,7 +47,9 @@ class WarningController extends Controller
 
         for ($i = 0; $i < 6; $i++) {
             $month = $currentMonth->copy()->subMonths($i);
-            $count = Warning::where('created_by', Auth::user()->creatorId())
+            $count = Warning::when(Auth::user()->type != 'super admin', function ($q) {
+                $q->where('created_by', Auth::user()->creatorId());
+            })
                 ->whereYear('warning_date', $month->year)
                 ->whereMonth('warning_date', $month->month)
                 ->count();
@@ -288,6 +281,8 @@ class WarningController extends Controller
             'id' => $warning->id,
             'subject' => $warning->subject,
             'description' => $warning->description,
+            'company' => $warning->company,
+            'created_by' => $warning->created_by,
             'warning_date' => [
                 'raw' => $warning->warning_date,
                 'formatted' => \Carbon\Carbon::parse($warning->warning_date)

@@ -9,6 +9,7 @@ use App\Models\Utility;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
@@ -17,13 +18,18 @@ class PayslipController extends Controller
     public function index()
     {
         if (Auth::user()->can('Manage Pay Slip')) {
-            $month = date('m');
+            $month = intval(date('m'));
             $user = User::find(Auth::user()->id);
-
-            $payslips = Payslip::with(['employee', 'employee.branch', 'employee.department', 'employee.designation'])
-                ->where('month', 3)
-                ->where('created_by', $user->creatorId())
-                ->get();
+            if (Auth::user()->type == 'super admin') {
+                $payslips = Payslip::with(['company', 'employee', 'employee.branch', 'employee.department', 'employee.designation'])
+                    ->where('month', $month)
+                    ->get();
+            } else {
+                $payslips = Payslip::with(['employee', 'employee.branch', 'employee.department', 'employee.designation'])
+                    ->where('month', $month)
+                    ->where('created_by', $user->creatorId())
+                    ->get();
+            }
 
             // Tambahkan net_salary untuk setiap employee
             // foreach ($payslips as $payslip) {
@@ -48,7 +54,10 @@ class PayslipController extends Controller
         if (Auth::user()->can('Manage Pay Slip')) {
             $user = User::find(Auth::user()->id);
             $payslip = Payslip::with(['employee', 'employee.branch', 'employee.department'])
-                ->where('created_by', $user->id)
+                // ->where('created_by', $user->id)
+                ->when($user->type == 'company', function ($q) use ($user) {
+                    $q->where('created_by', $user->creatorId());
+                })
                 ->findOrFail($id);
 
             // Decode JSON data stored in the payslip
@@ -101,7 +110,9 @@ class PayslipController extends Controller
         $user = User::find(Auth::user()->id);
 
         $payslip = Payslip::with(['employee', 'employee.branch', 'employee.department'])
-            ->where('created_by', $user->id)
+            ->when(Auth::user()->type != 'super admin', function ($q) use ($user) {
+                $q->where('created_by', $user->creatorId());
+            })
             ->findOrFail($id);
 
         $payslip->payment_status = $request->payment_status;
@@ -145,17 +156,20 @@ class PayslipController extends Controller
 
         try {
             // Check if payslips for the month already exist
-            $existingPayslips = Payslip::where('month', $month)
-                ->where('year', $year)
-                ->where('created_by', $user->creatorId())
-                ->count();
+            // $existingPayslips = Payslip::where('month', $month)
+            //     ->where('year', $year)
+            //     // ->where('created_by', $user->creatorId())
+            //     ->when(Auth::user()->type != 'super admin', function ($q) use ($user) {
+            //         $q->where('created_by', $user->creatorId());
+            //     })
+            //     ->count();
 
-            if ($existingPayslips > 0) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Payslips for this month and year already exist.',
-                ], 409);
-            }
+            // if ($existingPayslips > 0) {
+            //     return response()->json([
+            //         'status' => false,
+            //         'message' => 'Payslips for this month and year already exist.',
+            //     ], 409);
+            // }
 
             // Generate payslips using the model method
             $payslips = Payslip::generatePayslip($month, $year, $user->creatorId());
@@ -299,5 +313,45 @@ class PayslipController extends Controller
                 'file_url' => $payslip->file_url
             ]
         ], 200);
+    }
+
+    public function destroy($id)
+    {
+        if (!Auth::user()->can('Delete Pay Slip')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Permission denied.',
+            ], 403);
+        }
+
+        try {
+            $payslip = Payslip::findOrFail($id);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Payslip not found',
+            ], 404);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // Soft delete the project (using SoftDeletes trait)
+            $payslip->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Payslip deleted successfully'
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to delete Payslip',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

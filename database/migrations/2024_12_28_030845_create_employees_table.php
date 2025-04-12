@@ -27,7 +27,7 @@ return new class extends Migration
             $table->integer('department_id')->nullable();
             $table->integer('designation_id')->nullable();
             $table->string('company_doj')->nullable();
-            $table->string('documents')->nullable();
+            $table->json('documents')->nullable();
 
             $table->string('account_holder_name')->nullable();
             $table->string('account_number')->nullable();

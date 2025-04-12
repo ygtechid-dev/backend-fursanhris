@@ -33,6 +33,11 @@ class Reward extends Model
         'date' => 'date',
     ];
 
+    public function company()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     /**
      * Get the employee that owns the reward.
      */

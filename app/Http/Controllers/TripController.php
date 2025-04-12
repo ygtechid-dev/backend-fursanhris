@@ -33,9 +33,11 @@ class TripController extends Controller
         $query = Trip::query();
 
         // For admin, show all trips for the company
-        $query->where('created_by', $user->creatorId());
+        $query->when(Auth::user()->type != 'super admin', function ($q) use ($user) {
+            $q->where('created_by', $user->creatorId());
+        });
 
-        $trips = $query->with(['employee'])
+        $trips = $query->with(['company', 'employee'])
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($trip) use ($companyTz) {
@@ -87,6 +89,8 @@ class TripController extends Controller
             'purpose_of_visit' => $trip->purpose_of_visit,
             'place_of_visit' => $trip->place_of_visit,
             'description' => $trip->description,
+            'created_by' => $trip->created_by,
+            'company' => $trip->company,
             'created_at' => $trip->created_at->setTimezone($timezone)->format('Y-m-d H:i:s'),
             'updated_at' => $trip->updated_at->setTimezone($timezone)->format('Y-m-d H:i:s'),
         ];

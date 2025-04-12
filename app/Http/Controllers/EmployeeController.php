@@ -28,8 +28,8 @@ class EmployeeController extends Controller
     public function index()
     {
         if (Auth::user()->can('Manage Employee')) {
-            if (Auth::user()->type == 'employee') {
-                $employees = Employee::where('user_id', '=', Auth::user()->id)->get();
+            if (Auth::user()->type == 'super admin') {
+                $employees = Employee::with(['branch', 'department', 'designation', 'user', 'company'])->get();
             } else {
                 $employees = Employee::where('created_by', Auth::user()->creatorId())->with(['branch', 'department', 'designation', 'user'])->get();
             }
@@ -60,6 +60,7 @@ class EmployeeController extends Controller
                 'designation_id' => 'required',
                 'document.*' => 'nullable',
             ];
+
             // $rules['biometric_emp_id'] = [
             //     'required',
             //     Rule::unique('employees')->where(function ($query) {
@@ -82,7 +83,6 @@ class EmployeeController extends Controller
             }
 
             try {
-                // dd(Carbon::parse($request->dob), $request->all());
                 DB::beginTransaction();
                 $objUser        = User::find(Auth::user()->creatorId());
                 // $total_employee = $objUser->countEmployees();
@@ -94,34 +94,6 @@ class EmployeeController extends Controller
                 // if ($default_language == null) {
                 //     $default_language = DB::table('settings')->select('value')->where('name', 'default_language')->first();
                 // }
-
-                // if ($request->hasFile('document')) {
-                //     foreach ($request->document as $key => $document) {
-
-                //         $image_size = $request->file('document')[$key]->getSize();
-                //         $result = Utility::updateStorageLimit(\Auth::user()->creatorId(), $image_size);
-
-                //         if ($result == 1) {
-                //             $filenameWithExt = $request->file('document')[$key]->getClientOriginalName();
-                //             $filename        = pathinfo($filenameWithExt, PATHINFO_FILENAME);
-                //             $extension       = $request->file('document')[$key]->getClientOriginalExtension();
-                //             $fileNameToStore = $filename . '_' . time() . '.' . $extension;
-                //             $dir             = 'uploads/document/';
-
-                //             $image_path      = $dir . $fileNameToStore;
-
-                //             $path = \App\Models\Utility::upload_coustom_file($request, 'document', $fileNameToStore, $dir, $key, []);
-
-                //             if ($path['flag'] == 1) {
-                //                 $url = $path['url'];
-                //             } else {
-                //                 return redirect()->back()->with('error', __($path['msg']));
-                //             }
-                //         }
-                //     }
-                // }
-
-                // if ($total_employee < $plan->max_employees || $plan->max_employees == -1) {
 
                 $name_parts = explode(' ', $request['name'], 2); // Batasi menjadi 2 bagian
                 $first_name = $name_parts[0];
@@ -136,25 +108,14 @@ class EmployeeController extends Controller
                         // 'lang' => !empty($default_language) ? $default_language->value : 'en',
                         'avatar' => '',
                         'lang' => 'en',
-                        'created_by' => Auth::user()->creatorId(),
+                        'created_by' => Auth::user()->type == 'super admin' ? $request['created_by'] :  Auth::user()->creatorId(),
                         'email_verified_at' => $date,
                     ]
                 );
                 $user->save();
                 $user->assignRole('employee');
 
-                // } else {
-                //     return redirect()->back()->with('error', __('Your employee limit is over, Please upgrade plan.'));
-                // }
-
-
-                // if (!empty($request->document) && !is_null($request->document)) {
-                //     $document_implode = implode(',', array_keys($request->document));
-                // } else {
-                //     $document_implode = null;
-                // }
-
-
+                $documents = $this->handleDocumentUploads($request);
                 $employee = Employee::create(
                     [
                         'user_id' => $user->id,
@@ -171,51 +132,19 @@ class EmployeeController extends Controller
                         'department_id' => $request['department_id'],
                         'designation_id' => $request['designation_id'],
                         'company_doj' => $request['company_doj'],
-                        // 'documents' => $document_implode,
+                        'documents' => !empty($documents) ? $documents : null,
                         'account_holder_name' => $request['account_holder_name'] ?? null,
                         'account_number' => $request['account_number'] ?? null,
                         'bank_name' => $request['bank_name'] ?? null,
                         'bank_identifier_code' => $request['bank_identifier_code'] ?? null,
                         'branch_location' => $request['branch_location'] ?? null,
                         'tax_payer_id' => $request['tax_payer_id'] ?? null,
-                        'created_by' => Auth::user()->creatorId(),
+                        'created_by' => Auth::user()->type == 'super admin' ? $request['created_by'] :  Auth::user()->creatorId()
                     ]
                 );
 
-                // if ($request->hasFile('document')) {
-                //     foreach ($request->document as $key => $document) {
 
-                //         $image_size = $request->file('document')[$key]->getSize();
-                //         $result = Utility::updateStorageLimit(\Auth::user()->creatorId(), $image_size);
 
-                //         if ($result == 1) {
-                //             $filenameWithExt = $request->file('document')[$key]->getClientOriginalName();
-                //             $filename        = pathinfo($filenameWithExt, PATHINFO_FILENAME);
-                //             $extension       = $request->file('document')[$key]->getClientOriginalExtension();
-                //             $fileNameToStore = $filename . '_' . time() . '.' . $extension;
-                //             $dir             = 'uploads/document/';
-
-                //             $image_path      = $dir . $fileNameToStore;
-
-                //             $path = \App\Models\Utility::upload_coustom_file($request, 'document', $fileNameToStore, $dir, $key, []);
-
-                //             if ($path['flag'] == 1) {
-                //                 $url = $path['url'];
-                //             } else {
-                //                 return redirect()->back()->with('error', __($path['msg']));
-                //             }
-                //             $employee_document = EmployeeDocument::create(
-                //                 [
-                //                     'employee_id' => $employee['employee_id'],
-                //                     'document_id' => $key,
-                //                     'document_value' => $path['url'],
-                //                     'created_by' => \Auth::user()->creatorId(),
-                //                 ]
-                //             );
-                //             $employee_document->save();
-                //         }
-                //     }
-                // }
                 // $setings = \App\Models\Utility::settings();
                 // if ($setings['new_employee'] == 1) {
                 //     $department = Department::find($request['department_id']);
@@ -330,68 +259,10 @@ class EmployeeController extends Controller
                 ], 400);
             }
 
-
-            // if ($request->document) {
-
-            //     foreach ($request->document as $key => $document) {
-            //         $employee_document = EmployeeDocument::where('employee_id', $employee->employee_id)->where('document_id', $key)->first();
-            //         if (!empty($document)) {
-
-            //             //storage limit
-            //             $dir = 'uploads/document/';
-            //             if (!empty($employee_document)) {
-            //                 $file_path = $dir . $employee_document->document_value;
-            //             }
-            //             $image_size = $request->file('document')[$key]->getSize();
-            //             $result = Utility::updateStorageLimit(\Auth::user()->creatorId(), $image_size);
-
-            //             if ($result == 1) {
-            //                 if (!empty($$file_path)) {
-            //                     Utility::changeStorageLimit(\Auth::user()->creatorId(), $file_path);
-            //                 }
-
-            //                 $filenameWithExt = $request->file('document')[$key]->getClientOriginalName();
-            //                 $filename        = pathinfo($filenameWithExt, PATHINFO_FILENAME);
-            //                 $extension       = $request->file('document')[$key]->getClientOriginalExtension();
-            //                 $fileNameToStore = $filename . '_' . time() . '.' . $extension;
-            //                 $dir             = 'uploads/document/';
-
-            //                 $image_path      = $dir . $fileNameToStore;
-
-            //                 $path = \App\Models\Utility::upload_coustom_file($request, 'document', $fileNameToStore, $dir, $key, []);
-            //                 if (!empty($employee_document)) {
-            //                     if ($employee_document->document_value) {
-            //                         \File::delete(storage_path('uploads/document/' . $employee_document->document_value));
-            //                     }
-            //                     $employee_document->document_value = $fileNameToStore;
-            //                     $employee_document->save();
-            //                 } else {
-            //                     $employee_document                 = new EmployeeDocument();
-            //                     $employee_document->employee_id    = $employee->employee_id;
-            //                     $employee_document->document_id    = $key;
-            //                     $employee_document->document_value = $fileNameToStore;
-            //                     $employee_document->save();
-            //                 }
-
-            //                 if ($path['flag'] == 1) {
-            //                     $url = $path['url'];
-            //                 } else {
-            //                     return redirect()->back()->with('error', __($path['msg']));
-            //                 }
-            //             }
-            //         }
-            //     }
-            // }
-
-            // if (!empty($request->document) && !is_null($request->document)) {
-            //     $document_implode = implode(',', array_keys($request->document));
-            // } else {
-            //     $document_implode = null;
-            // }
-
+            $documents = $this->handleDocumentUploads($request);
             $employee = Employee::findOrFail($id);
             $input    = $request->all();
-            // $input['documents'] = $document_implode;
+            $input['documents'] = !empty($documents) ? $documents : $request->documents;
             $employee->fill($input)->save();
             if ($request->salary) {
                 return response()->json([
@@ -407,9 +278,6 @@ class EmployeeController extends Controller
                     'message'   => __('Employee successfully updated.') . ((isset($result) && $result != 1) ? '<br> <span class="text-danger">' . $result . '</span>' : '')
                 ], 200);
             } else {
-                // return redirect()->route('employee.show', \Illuminate\Support\Facades\Crypt::encrypt($employee->id))->with('success', __('Employee successfully updated.') . ((isset($result) && $result != 1) ? '<br> <span class="text-danger">' . $result . '</span>' : ''));
-
-
                 return response()->json([
                     'status'    => true,
                     'message'   => __('Employee successfully updated.') . ((isset($result) && $result != 1) ? '<br> <span class="text-danger">' . $result . '</span>' : '')
@@ -477,5 +345,25 @@ class EmployeeController extends Controller
         }
 
         return $latest->id + 1;
+    }
+
+    private function handleDocumentUploads(Request $request)
+    {
+        $documents = [];
+        $baseUrl = url('/');
+
+        if ($request->hasFile('documents')) {
+            foreach ($request->file('documents') as $key => $file) {
+                if ($file && $file->isValid()) {
+                    $fileName = $key . '_' . $this->employeeNumber() . '_' . time() . '.' . $file->getClientOriginalExtension();
+                    $file->move(public_path('uploads/employee_documents/'), $fileName);
+                    // Store as key-value pair in array
+                    $documents[$key] = $baseUrl . '/uploads/employee_documents/' . $fileName;
+                }
+            }
+        }
+
+        // Return documents array directly instead of imploded string
+        return $documents;
     }
 }

@@ -48,14 +48,13 @@ class ProjectController extends Controller
         }
 
         $user = User::with('employee')->where('id', Auth::user()->id)->first();
-        $employee = $user->employee;
         $companyTz = Utility::getCompanySchedule(Auth::user()->creatorId())['company_timezone'];
 
-        // Get projects based on role
-        // If user has admin role or can manage all projects, show all projects
-        // Otherwise show only projects where the employee is a member
         $query = Project::query();
-        $projects = $query->with(['tasks', 'members.employee'])
+        $projects = $query->with(['company', 'tasks', 'members.employee'])
+            ->when(Auth::user()->type != 'super admin', function ($q) use ($user) {
+                $q->where('created_by', $user->creatorId());
+            })
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($project) use ($companyTz) {
@@ -165,7 +164,8 @@ class ProjectController extends Controller
                 'start_date' => $request->start_date,
                 'end_date' => $request->end_date,
                 'status' => $request->status,
-                'created_by' => Auth::user()->id,
+                // 'created_by' => Auth::user()->id,
+                'created_by' => Auth::user()->type == 'company' ? Auth::user()->creatorId() : $request->company_id,
             ]);
 
             // Attach members if provided
@@ -355,7 +355,7 @@ class ProjectController extends Controller
      * @param int $completion
      * @return array
      */
-    private function formatProjectResponse($project, $timezone, $completion = null)
+    private function formatProjectResponse($project, $timezone = 'UTC', $completion = null)
     {
         // If completion is not provided, calculate it
         if ($completion === null) {
@@ -389,11 +389,13 @@ class ProjectController extends Controller
             'status' => $project->status,
             'progress' => $completion,
             'members_count' => $project->members->count(),
-            'members' => $members, // Include the formatted members data
+            'members' => $members,
+            'company' => $project?->company ?? null,
             'tasks_count' => $totalTasks,
             'completed_tasks' => $completedTasks,
             'created_at' => Carbon::parse($project->created_at)->setTimezone($timezone)->format('Y-m-d H:i:s'),
             'updated_at' => Carbon::parse($project->updated_at)->setTimezone($timezone)->format('Y-m-d H:i:s'),
+            'created_by' => $project?->created_by,
         ];
     }
 }

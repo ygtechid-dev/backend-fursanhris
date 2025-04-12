@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('purpose_of_visit');
             $table->string('place_of_visit');
             $table->string('description');
-            $table->string('created_by');
+            $table->integer('created_by');
             $table->timestamps();
         });
     }
