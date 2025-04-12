@@ -26,6 +26,10 @@ class Overtime extends Model
         'rejection_reason'
     ];
 
+    public function company()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 
     public function employee()
     {

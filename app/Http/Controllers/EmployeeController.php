@@ -291,6 +291,29 @@ class EmployeeController extends Controller
         }
     }
 
+    public function updateEmployeeSalary(Request $request, $id)
+    {
+        if (Auth::user()->can('Edit Employee')) {
+
+            $employee = Employee::findOrFail($id);
+
+            $input    = $request->all();
+            $employee->fill($input)->save();
+
+            return response()->json([
+                'status'    => true,
+                'message'   => __('Employee successfully updated.') . ((isset($result) && $result != 1) ? '<br> <span class="text-danger">' . $result . '</span>' : '')
+            ], 200);
+        } else {
+            return response()->json([
+                'status'    => false,
+                'message' => __('Permission denied.')
+            ], 403);
+        }
+    }
+
+
+
     public function destroy($id)
     {
         if (Auth::user()->can('Delete Employee')) {

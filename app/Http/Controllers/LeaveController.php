@@ -32,6 +32,7 @@ class LeaveController extends Controller
             'approved_at' => Utility::formatDateTimeToCompanyTz($leave->approved_at, $companyTz)?->format('Y-m-d H:i:s'),
             'rejected_at' => Utility::formatDateTimeToCompanyTz($leave->rejected_at, $companyTz)?->format('Y-m-d H:i:s'),
             'created_by' => $leave->created_by,
+            'company' => $leave->company,
             'created_at' => $leave->created_at,
             'updated_at' => $leave->updated_at,
             'employee' => $leave->employee,
@@ -52,13 +53,19 @@ class LeaveController extends Controller
                 ->where('id', Auth::user()->id)->first();
             $companyTz = Utility::getCompanySchedule($user->creatorId())['company_timezone'];
             $leaves = Leave::with([
+                'company',
                 'employee',
                 'leaveType',
                 'approver',
                 'rejecter'
-            ])->where('created_by', '=', $user->creatorId())->get()->map(function ($leave) use ($companyTz) {
-                return $this->formatLeaveResponse($leave, $companyTz);
-            });
+            ])
+                ->when(Auth::user()->type != 'super admin', function ($q) {
+                    $q->where('created_by', Auth::user()->creatorId());
+                })
+                ->get()
+                ->map(function ($leave) use ($companyTz) {
+                    return $this->formatLeaveResponse($leave, $companyTz);
+                });
             /** For ADmin Company not for superadmin */
 
             return response()->json([
@@ -202,7 +209,7 @@ class LeaveController extends Controller
                 'emergency_contact' => $request->emergency_contact ?? null,
                 'remark' => $request->remark,
                 'status' => 'approved',
-                'created_by' => $employee?->user->creatorId(),
+                'created_by' => Auth::user()->type == 'super admin' ? $request->created_by :  $employee?->user->creatorId(),
             ]);
 
             return response()->json([
@@ -361,6 +368,14 @@ class LeaveController extends Controller
         try {
             $companyTz = Utility::getCompanySchedule($leave->employee->user->creatorId())['company_timezone'];
 
+            $employee = Employee::with('user')->find($request->employee_id);
+            if (empty($employee)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Employee not found',
+                ], 404);
+            }
+
             $leave->update([
                 'leave_type_id' => $leave_type->id,
                 'start_date' => $request->start_date,
@@ -370,6 +385,7 @@ class LeaveController extends Controller
                 'emergency_contact' => $request->emergency_contact ?? $leave->emergency_contact,
                 'remark' => $request->remark,
                 'status' => 'pending', // Reset to pending since leave details changed
+                'created_by' => Auth::user()->type == 'super admin' ? $request->created_by :  $employee?->user->creatorId(),
             ]);
 
             return response()->json([
@@ -440,7 +456,6 @@ class LeaveController extends Controller
             ], 500);
         }
     }
-
 
     /** Untuk Admin dashboard / bukan employee */
     public function updateStatus(Request $request, $id)

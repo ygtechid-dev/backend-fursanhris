@@ -102,9 +102,11 @@ class Payslip extends Model
         // }
 
         if (Auth::user()->type == 'super admin') {
-            $employees = Employee::get();
+            $employees = Employee::where('salary', '!=', 0)->get();
         } else {
-            $employees = Employee::where('created_by', $created_by)->get();
+            $employees = Employee::where('created_by', $created_by)
+                ->where('salary', '!=', 0)
+                ->get();
         }
         $payslips = [];
 
@@ -113,6 +115,7 @@ class Payslip extends Model
             $existingPayslip = self::where('employee_id', $employee->id)
                 ->where('month', $month)
                 ->where('year', $year)
+
                 ->first();
 
             if (!$existingPayslip) {

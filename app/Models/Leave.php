@@ -29,6 +29,11 @@ class Leave extends Model
         'rejected_at' => 'datetime'
     ];
 
+    public function company()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     // Add relationships for tracking users
     public function approver()
     {

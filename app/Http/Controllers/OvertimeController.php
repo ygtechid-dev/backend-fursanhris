@@ -28,6 +28,7 @@ class OvertimeController extends Controller
             'rejected_at' => Utility::formatDateTimeToCompanyTz($overtime->rejected_at, $companyTz)?->format('Y-m-d H:i:s'),
             'rejection_reason' => $overtime->rejection_reason,
             'created_by' => $overtime->created_by,
+            'company' => $overtime->company,
             'created_at' => $overtime->created_at,
             'updated_at' => $overtime->updated_at,
             'employee' => $overtime->employee,
@@ -42,8 +43,10 @@ class OvertimeController extends Controller
             $user = User::with('employee')->where('id', Auth::user()->id)->first();
             $companyTz = Utility::getCompanySchedule($user->creatorId())['company_timezone'];
 
-            $overtimes = Overtime::with(['employee', 'approver', 'rejecter'])
-                ->where('created_by', '=', $user->creatorId())
+            $overtimes = Overtime::with(['company', 'employee', 'approver', 'rejecter'])
+                ->when(Auth::user()->type != 'super admin', function ($q) {
+                    $q->where('created_by', Auth::user()->creatorId());
+                })
                 ->get()
                 ->map(function ($overtime) use ($companyTz) {
                     return $this->formatOvertimeResponse($overtime, $companyTz);
@@ -109,7 +112,7 @@ class OvertimeController extends Controller
                     'hours' => round($hours, 2),
                     'status' => 'approved',
                     'remark' => $request->remark,
-                    'created_by' => $user->creatorId(),
+                    'created_by' => Auth::user()->type == 'super admin' ? $request->created_by :  $user->creatorId(),
                 ]);
 
                 return response()->json([
@@ -221,7 +224,7 @@ class OvertimeController extends Controller
             }
 
             // Check if employee exists and belongs to the company
-            $employee = Employee::findOrFail($request->employee_id);
+            $employee = Employee::with('user')->findOrFail($request->employee_id);
             if ($employee->created_by != Auth::user()->creatorId()) {
                 return response()->json([
                     'status' => false,
@@ -239,6 +242,7 @@ class OvertimeController extends Controller
             $overtime->hours = $request->hours;
             $overtime->rate = $request->rate;
             $overtime->remark = $request->remark;
+            $overtime->created_by = Auth::user()->type == 'super admin' ? $request->created_by :  $employee->user->creatorId();
             $overtime->save();
 
             // Load relationships for response

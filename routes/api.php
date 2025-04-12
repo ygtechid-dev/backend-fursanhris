@@ -134,6 +134,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         /** User */
         Route::get('/get-users', [Controllers\UserController::class, 'getUser']);
 
+        Route::put('/employees/{id}/update-employee-salary', [Controllers\EmployeeController::class, 'updateEmployeeSalary']);
+
         /** Employee Allowance */
         Route::get('/employees/{id}/allowances', [Controllers\EmployeeAllowanceController::class, 'getAllowances']);
         Route::post('/employees/{id}/allowances', [Controllers\EmployeeAllowanceController::class, 'store']);
