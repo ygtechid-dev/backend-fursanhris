@@ -3,27 +3,30 @@
 namespace App\Http\Controllers\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\Asset;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class AssetController extends Controller
 {
     public function index()
     {
-        $assets = [
-            [
-                'id' => 1,
-                'name' => 'Laptop Macbook Air M1 2020',
-                'brand' => 'Apple',
-                'warranty_status' => 'Off',
-                'buying_date' => '2020-09-12',
-                'image' => "https://image1ws.indotrading.com/s3/productimages/jpeg/co262721/p1279886/w600-h600/887c1220-bbf3-44d3-a0c7-3b105c6a64bc.jpg"
-            ],
-        ];
+        $user = Auth::user();
+        if (!$user || !$user->employee) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Employee not found',
+            ], 404);
+        }
+
+        $asset = Asset::getEmployeeAsset($user?->employee?->id);
 
         return response()->json([
-            'status' => 'success',
-            'message' => 'Office assets retrieved successfully',
-            'data' => $assets
+            'status' => true,
+            'message' => 'Employee asset retrieved successfully',
+            'data' => [
+                $asset
+            ]
         ], 200);
     }
 }

@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
         $this->call(ComplaintSeeder::class);
         $this->call(WarningSeeder::class);
         $this->call(TerminationTypeSeeder::class);
+        $this->call(AssetSeeder::class);
 
         /** Optional Seeder */
         $this->call(ResignationSeeder::class);

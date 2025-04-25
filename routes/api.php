@@ -174,6 +174,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/recent-activities', [App\Http\Controllers\ProjectDashboardController::class, 'getRecentActivities']);
         });
 
+        Route::prefix('assets')->group(function () {
+            Route::get('/', [Controllers\AssetController::class, 'index']);
+            Route::post('/', [Controllers\AssetController::class, 'store']);
+            Route::put('/{id}', [Controllers\AssetController::class, 'update']);
+            Route::delete('/{id}', [Controllers\AssetController::class, 'destroy']);
+        });
+
         Route::prefix('projects')->group(function () {
             Route::get('/', [Controllers\ProjectController::class, 'index']);
             Route::post('/', [Controllers\ProjectController::class, 'store']);
