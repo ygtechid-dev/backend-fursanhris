@@ -249,6 +249,7 @@ class PayslipController extends Controller
             'year' => $payslip->year,
             'period' => $monthName . ' ' . $payslip->year,
             'net_salary' => $payslip->net_salary,
+            'total_work_hours' => $payslip->total_work_hours,
             'payment_status' => $payslip->payment_status,
             'payment_date' => $payslip->payment_date,
             'created_at' => Carbon::parse($payslip->created_at)->setTimezone($timezone)->format('Y-m-d H:i:s'),

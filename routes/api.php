@@ -155,6 +155,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('/employees/{id}/overtimes/{overtimeId}', [Controllers\EmployeeOvertimeController::class, 'destroy']);
 
         Route::apiResource('salaries', Controllers\EmployeeSalaryController::class);
+
         /** Payslip */
         Route::prefix('payslips')->group(function () {
             Route::get('/', [Controllers\PayslipController::class, 'index']);
@@ -183,6 +184,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::get('/', [Controllers\TaskController::class, 'index']);
             });
         });
+
         Route::prefix('tasks')->group(function () {
             Route::post('/', [Controllers\TaskController::class, 'store']);
             Route::get('/{id}', [Controllers\TaskController::class, 'show']);

@@ -45,15 +45,19 @@ class UserController extends Controller
     public function getUser()
     {
         if (Auth::user()->can('Manage User')) {
-            $companyId = 2; // Company ID yang ingin Anda gunakan
+            $companyId = Auth::user()->id; // Company ID yang ingin Anda gunakan
 
             // Dapatkan company user
             $company = User::where('id', $companyId)
-                ->where('type', 'company')
+                ->when(Auth::user()->type != 'super admin', function ($q) {
+                    $q->where('type', 'company');
+                })
                 ->first();
 
             // Dapatkan semua users yang dibuat oleh company tersebut
-            $employeeUsers = User::where('created_by', $companyId)
+            $employeeUsers = User::when(Auth::user()->type != 'super admin', function ($q) {
+                $q->where('created_by', Auth::user()->creatorId());
+            })
                 ->where('id', '!=', $companyId) // Exclude the company itself
                 ->get();
 
@@ -61,11 +65,12 @@ class UserController extends Controller
             $allUsers = collect([$company])->merge($employeeUsers)
                 ->map(function ($user) {
                     return [
-                        'id' => $user->id,
-                        'name' => $user->employee_name(),
+                        'id' => $user?->id,
+                        'name' => $user?->employee_name(),
                         'email' => $user->email,
                         'avatar' => $user->avatar,
                         'type' => $user->type,
+                        'created_by' => $user->created_by,
                         'employee' => $user->type == 'employee' ? $user->employee : null,
                     ];
                 });

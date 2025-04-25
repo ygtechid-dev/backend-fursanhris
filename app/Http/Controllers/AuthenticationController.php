@@ -547,7 +547,7 @@ class AuthenticationController extends Controller
             'status' => true,
             'message' => 'Profile retrived successfully',
             'data' => [
-                'user' => User::with('employee')->find(Auth::id()),
+                'user' => User::with('employee.designation')->find(Auth::id()),
             ]
         ], 200);
     }

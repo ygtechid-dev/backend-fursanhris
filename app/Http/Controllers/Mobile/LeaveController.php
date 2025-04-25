@@ -91,7 +91,7 @@ class LeaveController extends Controller
         $validator = Validator::make(
             $request->all(),
             [
-                'employee_id' => 'required',
+                'employee_id' => 'nullable',
                 'leave_type_id' => 'required',
                 'start_date' => 'required|date',
                 'end_date' => 'required|date|after_or_equal:start_date',

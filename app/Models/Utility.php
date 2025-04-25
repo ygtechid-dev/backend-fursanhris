@@ -39,8 +39,8 @@ class Utility extends Model
             }
         }
         if (Auth::check()) {
-
             $data = $data->where('created_by', '=', Auth::user()->creatorId())->get();
+
             if (count($data) == 0) {
                 $data = DB::table('settings')->where('created_by', '=', 1)->get();
             }
@@ -49,6 +49,7 @@ class Utility extends Model
             $data->where('created_by', '=', 1);
             $data = $data->get();
         }
+
 
         $settings = [
             "site_currency" => "USD",

@@ -16,44 +16,52 @@ class DashboardController extends Controller
     public function getCardStats()
     {
         $user = Auth::user();
-        if ($user->type == 'company admin' || $user->type == 'company') {
-            $currentDate = date('Y-m-d');
+        // if ($user->type == 'company admin' || $user->type == 'company') {
+        $currentDate = date('Y-m-d');
 
-            $employees = User::where('type', '=', 'employee')->where('created_by', '=', Auth::user()->creatorId())->get();
-            $countEmployee = count($employees);
+        $employees = User::where('type', '=', 'employee')
+            ->when(Auth::user()->type != 'super admin', function ($q) {
+                $q->where('created_by', Auth::user()->creatorId());
+            })
+            ->get();
+        $countEmployee = count($employees);
 
-            $branches = Branch::where('created_by', '=', Auth::user()->creatorId())->get();
-            $countBranch = count($branches);
+        $branches = Branch::when(Auth::user()->type != 'super admin', function ($q) {
+            $q->where('created_by', Auth::user()->creatorId());
+        })->get();
+        $countBranch = count($branches);
 
-            $notPresentToday    = AttendanceEmployee::where('date', '=', $currentDate)->get()->pluck('employee_id');
-            $notPresentTodays = Employee::where('created_by', '=', Auth::user()->creatorId())->whereNotIn('id', $notPresentToday)->get();
+        $notPresentToday    = AttendanceEmployee::where('date', '=', $currentDate)->get()->pluck('employee_id');
+        $notPresentTodays = Employee::when(Auth::user()->type != 'super admin', function ($q) {
+            $q->where('created_by', Auth::user()->creatorId());
+        })->whereNotIn('id', $notPresentToday)->get();
 
-            $todayAttendance    = AttendanceEmployee::where('date', '=', $currentDate)->get();
-            $countTodayAttendance = count($todayAttendance);
+        $todayAttendance    = AttendanceEmployee::where('date', '=', $currentDate)->get();
+        $countTodayAttendance = count($todayAttendance);
 
-            $todayLeave = Leave::where(function ($query) use ($currentDate) {
-                $query->where('start_date', '<=', $currentDate)
-                    ->where('end_date', '>=', $currentDate);
-            })->where('status', 'approved')->get();
-            $countTodayLeave = count($todayLeave);
+        $todayLeave = Leave::where(function ($query) use ($currentDate) {
+            $query->where('start_date', '<=', $currentDate)
+                ->where('end_date', '>=', $currentDate);
+        })->where('status', 'approved')->get();
+        $countTodayLeave = count($todayLeave);
 
-            $todayOvertimes = Overtime::where('overtime_date', $currentDate)
-                ->where('status', 'approved')
-                ->get();
-            $countTodayOvertime = count($todayOvertimes);
+        $todayOvertimes = Overtime::where('overtime_date', $currentDate)
+            ->where('status', 'approved')
+            ->get();
+        $countTodayOvertime = count($todayOvertimes);
 
 
-            return response()->json([
-                'status'    => true,
-                'data'      => [
-                    'countEmployee' => $countEmployee,
-                    'countBranch' => $countBranch,
-                    'notPresentTodays' => $notPresentTodays,
-                    'countTodayAttendance' => $countTodayAttendance,
-                    'countTodayLeave' => $countTodayLeave,
-                    'countTodayOvertime' => $countTodayOvertime,
-                ]
-            ]);
-        }
+        return response()->json([
+            'status'    => true,
+            'data'      => [
+                'countEmployee' => $countEmployee,
+                'countBranch' => $countBranch,
+                'notPresentTodays' => $notPresentTodays,
+                'countTodayAttendance' => $countTodayAttendance,
+                'countTodayLeave' => $countTodayLeave,
+                'countTodayOvertime' => $countTodayOvertime,
+            ]
+        ]);
+        // }
     }
 }

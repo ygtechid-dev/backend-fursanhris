@@ -153,7 +153,6 @@ class ProjectController extends Controller
                 'errors' => $validator->errors()
             ], 422);
         }
-
         DB::beginTransaction();
 
         try {
@@ -165,7 +164,7 @@ class ProjectController extends Controller
                 'end_date' => $request->end_date,
                 'status' => $request->status,
                 // 'created_by' => Auth::user()->id,
-                'created_by' => Auth::user()->type == 'company' ? Auth::user()->creatorId() : $request->company_id,
+                'created_by' => Auth::user()->type != 'super admin' ? Auth::user()->creatorId() : $request->created_by,
             ]);
 
             // Attach members if provided
@@ -262,6 +261,9 @@ class ProjectController extends Controller
             }
             if ($request->has('status')) {
                 $project->status = $request->status;
+            }
+            if ($request->has('created_by')) {
+                $project->created_by =  Auth::user()->type != 'super admin' ? Auth::user()->creatorId() : $request->created_by;
             }
 
             $project->save();

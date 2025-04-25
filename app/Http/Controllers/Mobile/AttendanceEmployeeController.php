@@ -321,7 +321,7 @@ class AttendanceEmployeeController extends Controller
                 'early_leaving' => '00:00:00',
                 'overtime' => '00:00:00',
                 'total_rest' => '00:00:00',
-                'created_by' => Auth::user()->id,
+                'created_by' => Auth::user()->creatorId(),
                 'timezone' => $companyTz,
                 'clock_in_latitude' => $request->latitude,
                 'clock_in_longitude' => $request->longitude,
@@ -438,7 +438,8 @@ class AttendanceEmployeeController extends Controller
                 'clock_out_location' => $request->location,
                 'clock_out_photo' => asset('storage/' . $photoPath),
                 'clock_out_notes' => $request->notes,
-                'timezone' => $companyTz
+                'timezone' => $companyTz,
+                'created_by' => Auth::user()->creatorId(),
             ]);
 
             return response()->json([

@@ -22,6 +22,7 @@ return new class extends Migration
             $table->decimal('total_allowance', 15, 2)->default(0);
             $table->decimal('total_deduction', 15, 2)->default(0);
             $table->decimal('total_overtime', 15, 2)->default(0);
+            $table->float('total_work_hours')->nullable();
             $table->json('allowance');
             $table->json('deduction');
             $table->json('overtime');

@@ -135,6 +135,7 @@ class AttendanceEmployee extends Model
                 'total_rest' => $attendance->total_rest,
                 'clock_in_formatted' => $clockIn ? $clockIn->format('Y-m-d H:i:s') : null,
                 'clock_out_formatted' => $clockOut ? $clockOut->format('Y-m-d H:i:s') : null,
+                'company' => $attendance->company,
             ];
         });
     }
@@ -238,6 +239,8 @@ class AttendanceEmployee extends Model
         $daysPresent = 0;
         $daysAbsent = 0;
 
+        $companyTz = Utility::getCompanySchedule(Auth::user()->creatorId())['company_timezone'];
+
         // Process each attendance record
         foreach ($attendances as $attendance) {
             // Skip if status is 'Absent'
@@ -257,7 +260,7 @@ class AttendanceEmployee extends Model
             }
 
             // Convert clock times to Carbon instances with the date included
-            $clockIn = Carbon::parse($attendance->clock_in, 'UTC')
+            $clockIn = Carbon::parse($attendance->clock_in, $companyTz)
                 ->setDate(
                     Carbon::parse($attendance->date)->year,
                     Carbon::parse($attendance->date)->month,
@@ -265,7 +268,7 @@ class AttendanceEmployee extends Model
                 )
                 ->setTimezone($companyTz);
 
-            $clockOut = Carbon::parse($attendance->clock_out, 'UTC')
+            $clockOut = Carbon::parse($attendance->clock_out, $companyTz)
                 ->setDate(
                     Carbon::parse($attendance->date)->year,
                     Carbon::parse($attendance->date)->month,
@@ -451,5 +454,169 @@ class AttendanceEmployee extends Model
         $end_year_month = $endDate->format('Y-m');
 
         return $this->calculateEmployeeWorkingPeriods($employee_id, $start_year_month, $end_year_month, $companyTz);
+    }
+
+    /**
+     * Menghitung total jam kerja untuk semua karyawan
+     * 
+     * @param string|null $start_date Format: 'Y-m-d'
+     * @param string|null $end_date Format: 'Y-m-d'
+     * @param int|null $created_by ID user pembuat
+     * @param string $companyTz Timezone perusahaan
+     * @return array
+     */
+    public static function calculateTotalWorkHours($start_date = null, $end_date = null, $created_by = null, $companyTz = 'UTC')
+    {
+        // Jika tanggal tidak ditentukan, gunakan bulan ini
+        if (!$start_date || !$end_date) {
+            $start_date = date('Y-m-01'); // Awal bulan ini
+            $end_date = date('Y-m-t');    // Akhir bulan ini
+        }
+
+        // Query karyawan
+        $employeeQuery = Employee::select('id', 'name');
+
+        if ($created_by) {
+            $employeeQuery->where('created_by', $created_by);
+        } else if (Auth::user()->type != 'super admin') {
+            $employeeQuery->where('created_by', Auth::user()->creatorId());
+        }
+
+        $employees = $employeeQuery->get();
+
+        // Hasil perhitungan
+        $result = [
+            'total_employees' => count($employees),
+            'date_range' => "$start_date to $end_date",
+            'total_work_hours' => 0,
+            'total_overtime_hours' => 0,
+            'total_late_hours' => 0,
+            'total_early_leaving_hours' => 0,
+            'total_rest_hours' => 0,
+            'employees' => []
+        ];
+
+        // Instance model AttendanceEmployee
+        $attendanceModel = new self();
+
+        // Hitung untuk setiap karyawan
+        foreach ($employees as $employee) {
+            // Ambil data attendance dalam rentang waktu
+            $attendances = self::where('employee_id', $employee->id)
+                ->whereBetween('date', [$start_date, $end_date])
+                ->get();
+
+            // Inisialisasi data karyawan
+            $employeeData = [
+                'employee_id' => $employee->id,
+                'employee_name' => $employee->name,
+                'total_work_hours' => 0,
+                'total_overtime_hours' => 0,
+                'total_late_hours' => 0,
+                'total_early_leaving_hours' => 0,
+                'total_rest_hours' => 0,
+                'present_days' => 0,
+                'absent_days' => 0
+            ];
+
+            // Hitung total jam kerja dari data attendance
+            foreach ($attendances as $attendance) {
+                // Hanya hitung jika ada clock in dan clock out
+                if (
+                    $attendance->status == 'Present' &&
+                    $attendance->clock_in && $attendance->clock_out &&
+                    $attendance->clock_in != '00:00:00' && $attendance->clock_out != '00:00:00'
+                ) {
+                    $employeeData['present_days']++;
+
+                    // Convert clock times ke Carbon dengan timezone perusahaan
+                    $clockIn = Carbon::parse($attendance->clock_in, 'UTC')
+                        ->setDate(
+                            Carbon::parse($attendance->date)->year,
+                            Carbon::parse($attendance->date)->month,
+                            Carbon::parse($attendance->date)->day
+                        )
+                        ->setTimezone($companyTz);
+
+                    $clockOut = Carbon::parse($attendance->clock_out, 'UTC')
+                        ->setDate(
+                            Carbon::parse($attendance->date)->year,
+                            Carbon::parse($attendance->date)->month,
+                            Carbon::parse($attendance->date)->day
+                        )
+                        ->setTimezone($companyTz);
+
+                    // Jika clock out sebelum clock in, asumsi sudah hari berikutnya
+                    if ($clockOut->lt($clockIn)) {
+                        $clockOut->addDay();
+                    }
+
+                    // Hitung durasi kerja dalam menit
+                    $workDuration = $clockIn->diffInMinutes($clockOut);
+
+                    // Kurangi waktu istirahat jika ada
+                    if ($attendance->total_rest && is_numeric($attendance->total_rest)) {
+                        $totalRest = (float)$attendance->total_rest;
+                        $workDuration -= $totalRest;
+                        $employeeData['total_rest_hours'] += $totalRest / 60;
+                        $result['total_rest_hours'] += $totalRest / 60;
+                    }
+
+                    // Konversi menit ke jam dan tambahkan ke total
+                    $workHours = $workDuration / 60;
+                    $employeeData['total_work_hours'] += $workHours;
+
+                    // Tambahkan jam keterlambatan
+                    if ($attendance->late && is_numeric($attendance->late)) {
+                        $lateHours = (float)$attendance->late / 60;
+                        $employeeData['total_late_hours'] += $lateHours;
+                        $result['total_late_hours'] += $lateHours;
+                    }
+
+                    // Tambahkan jam pulang awal
+                    if ($attendance->early_leaving && is_numeric($attendance->early_leaving)) {
+                        $earlyHours = (float)$attendance->early_leaving / 60;
+                        $employeeData['total_early_leaving_hours'] += $earlyHours;
+                        $result['total_early_leaving_hours'] += $earlyHours;
+                    }
+
+                    // Tambahkan jam lembur
+                    if ($attendance->overtime && is_numeric($attendance->overtime)) {
+                        $overtimeHours = (float)$attendance->overtime / 60;
+                        $employeeData['total_overtime_hours'] += $overtimeHours;
+                        $result['total_overtime_hours'] += $overtimeHours;
+                    }
+                } else if ($attendance->status == 'Absent') {
+                    $employeeData['absent_days']++;
+                }
+            }
+
+            // Tambahkan juga jam lembur dari tabel Overtime
+            $overtimeHours = Overtime::calculateEmployeeWorkHours($employee->id, null, null, $start_date, $end_date);
+            $employeeData['total_overtime_hours'] += $overtimeHours;
+            $result['total_overtime_hours'] += $overtimeHours;
+
+            // Tambahkan ke total keseluruhan
+            $result['total_work_hours'] += $employeeData['total_work_hours'];
+
+            // Format angka dengan 2 desimal
+            $employeeData['total_work_hours'] = round($employeeData['total_work_hours'], 2);
+            $employeeData['total_overtime_hours'] = round($employeeData['total_overtime_hours'], 2);
+            $employeeData['total_late_hours'] = round($employeeData['total_late_hours'], 2);
+            $employeeData['total_early_leaving_hours'] = round($employeeData['total_early_leaving_hours'], 2);
+            $employeeData['total_rest_hours'] = round($employeeData['total_rest_hours'], 2);
+
+            // Tambahkan ke hasil
+            $result['employees'][] = $employeeData;
+        }
+
+        // Format angka total dengan 2 desimal
+        $result['total_work_hours'] = round($result['total_work_hours'], 2);
+        $result['total_overtime_hours'] = round($result['total_overtime_hours'], 2);
+        $result['total_late_hours'] = round($result['total_late_hours'], 2);
+        $result['total_early_leaving_hours'] = round($result['total_early_leaving_hours'], 2);
+        $result['total_rest_hours'] = round($result['total_rest_hours'], 2);
+
+        return $result;
     }
 }

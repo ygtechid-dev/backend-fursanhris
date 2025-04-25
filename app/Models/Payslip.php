@@ -18,6 +18,7 @@ class Payslip extends Model
         'total_allowance',
         'total_deduction',
         'total_overtime',
+        'total_work_hours',
         'allowance',
         'deduction',
         'overtime',
@@ -95,12 +96,147 @@ class Payslip extends Model
     }
 
     // Generate Payslip untuk satu bulan
+    // public static function generatePayslip($month, $year, $created_by = null)
+    // {
+    //     // if ($created_by == null) {
+    //     //     $created_by = Auth::user()->creatorId();
+    //     // }
+
+    //     if (Auth::user()->type == 'super admin') {
+    //         $employees = Employee::where('salary', '!=', 0)->get();
+    //     } else {
+    //         $employees = Employee::where('created_by', $created_by)
+    //             ->where('salary', '!=', 0)
+    //             ->get();
+    //     }
+    //     $payslips = [];
+
+    //     foreach ($employees as $employee) {
+    //         // Cek apakah payslip sudah ada
+    //         $existingPayslip = self::where('employee_id', $employee->id)
+    //             ->where('month', $month)
+    //             ->where('year', $year)
+
+    //             ->first();
+
+    //         if (!$existingPayslip) {
+    //             // Hitung basic salary berdasarkan tipe gaji
+    //             $basic_salary = $employee->salary;
+
+    //             // Generate nomor payslip
+    //             $payslip_number = strtoupper(substr($employee->name, 0, 3)) . '-' . $month . $year . '-' . rand(1000, 9999);
+
+    //             // Buat payslip baru
+    //             $payslip = new self();
+    //             $payslip->employee_id = $employee->id;
+    //             $payslip->payslip_number = $payslip_number;
+    //             $payslip->month = $month;
+    //             $payslip->year = $year;
+    //             $payslip->salary_type = $employee->salary_type;
+    //             $payslip->basic_salary = $basic_salary;
+    //             $payslip->created_by = Auth::user()->type != 'super admin' ? $created_by : $employee->created_by;
+
+    //             // Hitung Allowances (tunjangan)
+    //             $totalAllowance = 0;
+
+    //             // Allowance permanen
+    //             $permanentAllowances = Allowance::where('employee_id', $employee->id)
+    //                 ->where('type', 'permanent')
+    //                 // ->where('created_by', $created_by)
+    //                 ->when(Auth::user()->type != 'super admin', function ($q) use ($created_by) {
+    //                     $q->where('created_by', $created_by);
+    //                 })
+    //                 ->get();
+
+    //             // Allowance bulanan
+    //             $monthlyAllowances = Allowance::where('employee_id', $employee->id)
+    //                 ->where('type', 'monthly')
+    //                 ->where('month', sprintf('%02d', $month)) // Format menjadi 2 digit (03 bukan 3)
+    //                 ->where('year', (int)$year)
+    //                 // ->where('created_by', $created_by)
+    //                 ->when(Auth::user()->type != 'super admin', function ($q) use ($created_by) {
+    //                     $q->where('created_by', $created_by);
+    //                 })
+    //                 ->get();
+
+    //             $allowances = $permanentAllowances->merge($monthlyAllowances);
+    //             $allowance_json = json_encode($allowances);
+
+    //             // Menambahkan allowances ke payslip dan menghitung total
+    //             foreach ($allowances as $allowance) {
+    //                 $totalAllowance += $allowance->amount;
+    //             }
+
+    //             // Hitung Deductions (potongan)
+    //             $totalDeduction = 0;
+
+    //             // Deduction permanen
+    //             $permanentDeductions = Deduction::where('employee_id', $employee->id)
+    //                 ->where('type', 'permanent')
+    //                 // ->where('created_by', $created_by)
+    //                 ->when(Auth::user()->type != 'super admin', function ($q) use ($created_by) {
+    //                     $q->where('created_by', $created_by);
+    //                 })
+    //                 ->get();
+
+    //             // Deduction bulanan
+    //             $monthlyDeductions = Deduction::where('employee_id', $employee->id)
+    //                 ->where('type', 'monthly')
+    //                 ->where('month', sprintf('%02d', $month)) // Format menjadi 2 digit (03 bukan 3)
+    //                 ->where('year', (int)$year)
+    //                 // ->where('created_by', $created_by)
+    //                 ->when(Auth::user()->type != 'super admin', function ($q) use ($created_by) {
+    //                     $q->where('created_by', $created_by);
+    //                 })
+    //                 ->get();
+
+    //             $deductions = $permanentDeductions->merge($monthlyDeductions);
+    //             $deduction_json = json_encode($deductions);
+
+    //             // Menambahkan deductions ke payslip dan menghitung total
+    //             foreach ($deductions as $deduction) {
+    //                 $totalDeduction += $deduction->amount;
+    //             }
+
+    //             // Hitung Overtime
+    //             $overtimeTotal = 0;
+    //             $approvedOvertimes = Overtime::where('employee_id', $employee->id)
+    //                 ->whereMonth('overtime_date', $month)
+    //                 ->whereYear('overtime_date', $year)
+    //                 ->where('status', 'approved')
+    //                 ->get();
+    //             $overtime_json = json_encode($approvedOvertimes);
+
+    //             foreach ($approvedOvertimes as $overtime) {
+    //                 $overtimeAmount = 0;
+
+    //                 $total_work      = $overtime->number_of_days * $overtime->hours;
+    //                 $overtimeAmount          = $total_work * $overtime->rate;
+
+    //                 $overtimeTotal += $overtimeAmount;
+    //             }
+    //             // dd($basic_salary, $totalAllowance, $overtimeTotal, $totalDeduction);
+    //             // Update total allowance, deduction, dan net salary
+    //             $payslip->total_allowance = $totalAllowance;
+    //             $payslip->total_deduction = $totalDeduction;
+    //             $payslip->total_overtime = $overtimeTotal;
+    //             $payslip->allowance = $allowance_json;
+    //             $payslip->deduction = $deduction_json;
+    //             $payslip->overtime = $overtime_json;
+    //             $payslip->net_salary = $basic_salary + $totalAllowance + $overtimeTotal - $totalDeduction;
+    //             $payslip->payment_status = 'unpaid';
+    //             $payslip->save();
+
+    //             $payslips[] = $payslip;
+    //         }
+    //     }
+
+    //     return $payslips;
+    // }
+
+    // Generate Payslip untuk satu bulan
     public static function generatePayslip($month, $year, $created_by = null)
     {
-        // if ($created_by == null) {
-        //     $created_by = Auth::user()->creatorId();
-        // }
-
         if (Auth::user()->type == 'super admin') {
             $employees = Employee::where('salary', '!=', 0)->get();
         } else {
@@ -110,12 +246,18 @@ class Payslip extends Model
         }
         $payslips = [];
 
+        // Get company timezone or use UTC as default
+        $companyTz = Utility::getCompanySchedule(Auth::user()->creatorId())['company_timezone'];
+        // if (Auth::user()->type != 'super admin') {
+        //     $company = User::find($created_by);
+        //     $companyTz = $company && $company->timezone ? $company->timezone : 'UTC';
+        // }
+
         foreach ($employees as $employee) {
             // Cek apakah payslip sudah ada
             $existingPayslip = self::where('employee_id', $employee->id)
                 ->where('month', $month)
                 ->where('year', $year)
-
                 ->first();
 
             if (!$existingPayslip) {
@@ -135,13 +277,30 @@ class Payslip extends Model
                 $payslip->basic_salary = $basic_salary;
                 $payslip->created_by = Auth::user()->type != 'super admin' ? $created_by : $employee->created_by;
 
+                // Calculate total work hours for this employee in this month
+                $start_date = sprintf('%04d-%02d-01', $year, $month); // First day of month
+                $end_date = date('Y-m-t', strtotime($start_date)); // Last day of month
+
+                // Create instance of AttendanceEmployee
+                $attendanceModel = new AttendanceEmployee();
+
+                // Get monthly working period statistics
+                $monthlyStats = $attendanceModel->calculateMonthlyWorkingPeriod(
+                    $employee->id,
+                    "$year-$month",
+                    $companyTz
+                );
+
+                // Save total work hours to payslip
+                $payslip->total_work_hours = $monthlyStats['total_working_hours'];
+
+                // [Rest of your existing code for allowances, deductions, etc.]
                 // Hitung Allowances (tunjangan)
                 $totalAllowance = 0;
 
                 // Allowance permanen
                 $permanentAllowances = Allowance::where('employee_id', $employee->id)
                     ->where('type', 'permanent')
-                    // ->where('created_by', $created_by)
                     ->when(Auth::user()->type != 'super admin', function ($q) use ($created_by) {
                         $q->where('created_by', $created_by);
                     })
@@ -150,9 +309,8 @@ class Payslip extends Model
                 // Allowance bulanan
                 $monthlyAllowances = Allowance::where('employee_id', $employee->id)
                     ->where('type', 'monthly')
-                    ->where('month', sprintf('%02d', $month)) // Format menjadi 2 digit (03 bukan 3)
+                    ->where('month', sprintf('%02d', $month))
                     ->where('year', (int)$year)
-                    // ->where('created_by', $created_by)
                     ->when(Auth::user()->type != 'super admin', function ($q) use ($created_by) {
                         $q->where('created_by', $created_by);
                     })
@@ -172,7 +330,6 @@ class Payslip extends Model
                 // Deduction permanen
                 $permanentDeductions = Deduction::where('employee_id', $employee->id)
                     ->where('type', 'permanent')
-                    // ->where('created_by', $created_by)
                     ->when(Auth::user()->type != 'super admin', function ($q) use ($created_by) {
                         $q->where('created_by', $created_by);
                     })
@@ -181,9 +338,8 @@ class Payslip extends Model
                 // Deduction bulanan
                 $monthlyDeductions = Deduction::where('employee_id', $employee->id)
                     ->where('type', 'monthly')
-                    ->where('month', sprintf('%02d', $month)) // Format menjadi 2 digit (03 bukan 3)
+                    ->where('month', sprintf('%02d', $month))
                     ->where('year', (int)$year)
-                    // ->where('created_by', $created_by)
                     ->when(Auth::user()->type != 'super admin', function ($q) use ($created_by) {
                         $q->where('created_by', $created_by);
                     })
@@ -208,13 +364,11 @@ class Payslip extends Model
 
                 foreach ($approvedOvertimes as $overtime) {
                     $overtimeAmount = 0;
-
-                    $total_work      = $overtime->number_of_days * $overtime->hours;
-                    $overtimeAmount          = $total_work * $overtime->rate;
-
+                    $total_work = $overtime->number_of_days * $overtime->hours;
+                    $overtimeAmount = $total_work * $overtime->rate;
                     $overtimeTotal += $overtimeAmount;
                 }
-                // dd($basic_salary, $totalAllowance, $overtimeTotal, $totalDeduction);
+
                 // Update total allowance, deduction, dan net salary
                 $payslip->total_allowance = $totalAllowance;
                 $payslip->total_deduction = $totalDeduction;

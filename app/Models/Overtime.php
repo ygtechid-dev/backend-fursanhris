@@ -51,4 +51,42 @@ class Overtime extends Model
         'fixed' => 'Fixed',
         'percentage' => 'Percentage',
     ];
+
+    /**
+     * Menghitung total jam lembur untuk satu karyawan
+     * 
+     * @param int $employee_id
+     * @param string|null $month Format: '01', '02', ..., '12'
+     * @param string|null $year Format: 'YYYY'
+     * @param string|null $start_date Format: 'Y-m-d'
+     * @param string|null $end_date Format: 'Y-m-d'
+     * @return float
+     */
+    public static function calculateEmployeeWorkHours($employee_id, $month = null, $year = null, $start_date = null, $end_date = null)
+    {
+        $query = self::where('employee_id', $employee_id)
+            ->where('status', 'approved');
+
+        // Filter berdasarkan bulan dan tahun
+        if ($month && $year) {
+            $query->whereMonth('overtime_date', $month)
+                ->whereYear('overtime_date', $year);
+        } elseif ($year) {
+            $query->whereYear('overtime_date', $year);
+        }
+
+        // Filter berdasarkan rentang tanggal jika diisi
+        if ($start_date && $end_date) {
+            $query->whereBetween('overtime_date', [$start_date, $end_date]);
+        }
+
+        $overtimes = $query->get();
+        $totalHours = 0;
+
+        foreach ($overtimes as $overtime) {
+            $totalHours += ($overtime->number_of_days * $overtime->hours);
+        }
+
+        return $totalHours;
+    }
 }

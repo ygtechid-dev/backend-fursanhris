@@ -55,8 +55,8 @@ class PayslipController extends Controller
             $user = User::find(Auth::user()->id);
             $payslip = Payslip::with(['employee', 'employee.branch', 'employee.department'])
                 // ->where('created_by', $user->id)
-                ->when($user->type == 'company', function ($q) use ($user) {
-                    $q->where('created_by', $user->creatorId());
+                ->when(Auth::user()->type != 'super admin', function ($q) {
+                    $q->where('created_by', Auth::user()->creatorId());
                 })
                 ->findOrFail($id);
 
