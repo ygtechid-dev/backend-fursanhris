@@ -10,7 +10,8 @@ class ReimbursementCategory extends Model
         'name',
         'description',
         'max_amount', // Batas maksimal penggantian per kategori (opsional)
-        'is_active'
+        'is_active',
+        'created_by',
     ];
 
     public function reimbursements()

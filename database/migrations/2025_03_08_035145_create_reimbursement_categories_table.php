@@ -18,6 +18,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->decimal('max_amount', 15, 2)->nullable();
             $table->boolean('is_active')->default(true);
+            $table->integer('created_by');
             $table->timestamps();
         });
     }

@@ -16,8 +16,9 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('employee_id');
             $table->string('request_number')->unique()->nullable();
-            $table->string('title');
+            $table->string('title')->nullable();
             $table->text('description')->nullable();
+            $table->string('remark')->nullable();
             $table->decimal('amount', 15, 2);
             $table->string('receipt_path')->nullable();
             $table->enum('status', ['pending', 'approved', 'rejected', 'paid'])->default('pending');

@@ -113,6 +113,8 @@ class OvertimeController extends Controller
                     'status' => 'approved',
                     'remark' => $request->remark,
                     'created_by' => Auth::user()->type == 'super admin' ? $request->created_by :  $user->creatorId(),
+                    'approved_by'   => Auth::id(),
+                    'approved_at'   => now(),
                 ]);
 
                 return response()->json([

@@ -210,7 +210,11 @@ class LeaveController extends Controller
                 'remark' => $request->remark,
                 'status' => 'approved',
                 'created_by' => Auth::user()->type == 'super admin' ? $request->created_by :  $employee?->user->creatorId(),
+                'approved_by'   => Auth::id(),
+                'approved_at'   => now(),
             ]);
+
+
 
             return response()->json([
                 'status' => true,

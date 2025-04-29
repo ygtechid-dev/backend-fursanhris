@@ -14,6 +14,7 @@ class Reimbursement extends Model
         'request_number',
         'title',
         'description',
+        'remark',
         'amount',
         'receipt_path',
         'status', // pending, approved, rejected, paid
@@ -41,6 +42,11 @@ class Reimbursement extends Model
         'updated_at',
         'deleted_at'
     ];
+
+    public function company()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 
     public function employee()
     {

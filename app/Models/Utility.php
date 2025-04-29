@@ -752,6 +752,7 @@ class Utility extends Model
         if (!$dateTime || $dateTime === '0000-00-00 00:00:00') {
             return null;
         }
+        // dd($dateTime);
         return Carbon::parse($dateTime)->setTimezone($companyTz);
     }
 

@@ -43,6 +43,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('departments', Controllers\DepartmentController::class);
     Route::apiResource('designations', Controllers\DesignationController::class);
     Route::apiResource('leave-types', Controllers\LeaveTypeController::class);
+    Route::apiResource('reimbursement-types', Controllers\ReimbursementCategoryController::class);
 
     // Route untuk mobile
     Route::middleware(CheckPlatformAccess::class . ':mobile')->prefix('mobile')->group(function () {
@@ -155,6 +156,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('/employees/{id}/overtimes/{overtimeId}', [Controllers\EmployeeOvertimeController::class, 'destroy']);
 
         Route::apiResource('salaries', Controllers\EmployeeSalaryController::class);
+
+        /** Reimbursements */
+        Route::prefix('reimbursements')->group(function () {
+            Route::get('/', [Controllers\ReimbursementController::class, 'index']);
+            Route::post('/', [Controllers\ReimbursementController::class, 'store']);
+            Route::post('/{id}', [Controllers\ReimbursementController::class, 'update']);
+            Route::delete('/{id}', [Controllers\ReimbursementController::class, 'destroy']);
+            Route::post('/update-status/{id}', [Controllers\ReimbursementController::class, 'updateStatus']);
+        });
 
         /** Payslip */
         Route::prefix('payslips')->group(function () {

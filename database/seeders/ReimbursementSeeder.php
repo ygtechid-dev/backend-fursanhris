@@ -40,10 +40,10 @@ class ReimbursementSeeder extends Seeder
     private function createDefaultCategories()
     {
         $categories = [
-            ['name' => 'Transportation', 'description' => 'Costs related to travel and commuting'],
-            ['name' => 'Office Supplies', 'description' => 'Costs for office equipment and consumables'],
-            ['name' => 'Training', 'description' => 'Costs for courses, workshops and learning materials'],
-            ['name' => 'Meals', 'description' => 'Business meal expenses']
+            ['name' => 'Transportation', 'description' => 'Costs related to travel and commuting', 'created_by' => 2],
+            ['name' => 'Office Supplies', 'description' => 'Costs for office equipment and consumables', 'created_by' => 2],
+            ['name' => 'Training', 'description' => 'Costs for courses, workshops and learning materials', 'created_by' => 2],
+            ['name' => 'Meals', 'description' => 'Business meal expenses', 'created_by' => 2]
         ];
 
         $createdCategories = collect();
