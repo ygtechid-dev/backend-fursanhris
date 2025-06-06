@@ -25,7 +25,7 @@ class Asset extends Model
 
     public static function getEmployeeAsset($employee_id)
     {
-        return self::where('employee_id', $employee_id)->first();
+        return self::where('employee_id', $employee_id)->get();
     }
 
     public function company()

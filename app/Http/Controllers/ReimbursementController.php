@@ -8,6 +8,7 @@ use App\Models\Reimbursement;
 use App\Models\ReimbursementCategory;
 use App\Models\User;
 use App\Models\Utility;
+use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -346,7 +347,8 @@ class ReimbursementController extends Controller
 
         $validator = Validator::make($request->all(), [
             'status' => 'required|in:approved,rejected,paid',
-            'notes' => 'required_if:status,rejected',
+            'remark' => 'nullable|string',
+            // 'notes' => 'required_if:status,rejected',
             // 'payment_method' => 'required_if:status,paid',
         ]);
 
@@ -384,6 +386,7 @@ class ReimbursementController extends Controller
         }
 
         try {
+            $notificationService = new NotificationService();
             switch ($request->status) {
                 case 'approved':
                     $reimbursement->update([
@@ -392,6 +395,9 @@ class ReimbursementController extends Controller
                         'approved_at' => now(),
                         'remark' => $request->remark ?? $reimbursement->remark,
                     ]);
+
+                    $reimbursement->refresh();
+                    $notificationService->notifyReimburseApproved($reimbursement?->employee?->user, $reimbursement->toArray());
                     break;
 
                 case 'rejected':
@@ -401,6 +407,8 @@ class ReimbursementController extends Controller
                         'rejected_at' => now(),
                         'remark' => $request->remark ?? $reimbursement->remark,
                     ]);
+                    $reimbursement->refresh();
+                    $notificationService->notifyReimburseRejected($reimbursement?->employee?->user, $reimbursement->toArray(), $reimbursement['remark'] ?? null);
                     break;
 
                 case 'paid':
@@ -410,7 +418,7 @@ class ReimbursementController extends Controller
                         'paid_at' => now(),
                         'payment_method' => $request?->payment_method ?? null,
                         'remark' => $request->remark ?? $reimbursement->remark,
-                    ];
+                    ];;
 
                     // Jika reimbursement masih pending (belum pernah diapprove),
                     // kita perlu menambahkan informasi approval
@@ -420,6 +428,9 @@ class ReimbursementController extends Controller
                     }
 
                     $reimbursement->update($updateData);
+
+                    $reimbursement->refresh();
+                    $notificationService->notifyReimbursePaid($reimbursement?->employee?->user,  $reimbursement->toArray());
                     break;
             }
 

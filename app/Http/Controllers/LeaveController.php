@@ -8,6 +8,7 @@ use App\Models\Leave;
 use App\Models\LeaveType;
 use App\Models\User;
 use App\Models\Utility;
+use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -487,6 +488,7 @@ class LeaveController extends Controller
 
         try {
             $leave = Leave::findOrFail($id);
+            $notificationService = new NotificationService();
 
             if ($leave->status !== 'pending') {
                 return response()->json([
@@ -540,6 +542,12 @@ class LeaveController extends Controller
             }
 
             $leave->save();
+
+            if ($leave->status === 'approved') {
+                $notificationService->notifyLeaveApproved($leave?->employee?->user, $leave->toArray());
+            } else {
+                $notificationService->notifyLeaveRejected($leave?->employee?->user, $leave->toArray(), $leave->remark);
+            }
 
             // Load relationships for response
             $leave->load(['approver', 'rejecter']);

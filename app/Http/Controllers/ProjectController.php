@@ -232,14 +232,14 @@ class ProjectController extends Controller
             'end_date' => 'sometimes|required|date|after_or_equal:start_date',
             'status' => 'sometimes|required|in:planning,active,on_hold,completed',
             'members' => 'nullable|array',
-            'members.*' => 'exists:users,id'
+            // 'members.*' => 'exists:users,id'
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'status' => false,
                 'message' => 'Validation error',
-                'errors' => $validator->errors()
+                'errors' => $validator->messages()
             ], 422);
         }
 
@@ -270,9 +270,10 @@ class ProjectController extends Controller
 
             // Update members if provided
             if ($request->has('members')) {
+
                 $memberData = [];
                 foreach ($request->members as $userId) {
-                    $memberData[$userId] = [
+                    $memberData[$userId['id']] = [
                         'assigned_by' => Auth::user()->id
                     ];
                 }

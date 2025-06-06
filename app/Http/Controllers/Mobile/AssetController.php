@@ -24,9 +24,7 @@ class AssetController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'Employee asset retrieved successfully',
-            'data' => [
-                $asset
-            ]
+            'data' =>  $asset
         ], 200);
     }
 }

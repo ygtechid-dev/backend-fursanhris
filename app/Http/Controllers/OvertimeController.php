@@ -6,6 +6,7 @@ use App\Models\Employee;
 use App\Models\Overtime;
 use App\Models\User;
 use App\Models\Utility;
+use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -276,7 +277,8 @@ class OvertimeController extends Controller
 
         $validator = Validator::make($request->all(), [
             'status' => 'required|in:approved,rejected',
-            'rejection_reason' => 'required_if:status,rejected'
+            // 'rejection_reason' => 'required_if:status,rejected'
+            'remark' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -290,6 +292,7 @@ class OvertimeController extends Controller
 
         try {
             $overtime = Overtime::findOrFail($id);
+            $notificationService = new NotificationService();
 
             if ($overtime->status !== 'pending') {
                 return response()->json([
@@ -305,17 +308,26 @@ class OvertimeController extends Controller
                 $overtime->rejected_by = null;
                 $overtime->rejected_at = null;
                 $overtime->rejection_reason = null;
+                $overtime->remark = null;
             } else {
                 // Set rejection details
                 $overtime->rejected_by = Auth::id();
                 $overtime->rejected_at = now();
                 $overtime->approved_by = null;
                 $overtime->approved_at = null;
-                $overtime->rejection_reason = $request->rejection_reason;
+                $overtime->rejection_reason = $request->rejection_reason ?? null;
+                $overtime->remark = $request->remark ?? null;
             }
 
             $overtime->status = $request->status;
             $overtime->save();
+
+
+            if ($overtime->status === 'approved') {
+                $notificationService->notifyOvertimeApproved($overtime?->employee?->user, $overtime->toArray());
+            } else {
+                $notificationService->notifyOvertimeRejected($overtime?->employee?->user, $overtime->toArray(), $overtime->remark);
+            }
 
             // Load relationships for response
             $overtime->load(['approver', 'rejecter']);

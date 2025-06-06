@@ -116,6 +116,7 @@ class EmployeeController extends Controller
                 $user->assignRole('employee');
 
                 $documents = $this->handleDocumentUploads($request);
+                $createdBy = Auth::user()->type == 'super admin' ? $request['created_by'] :  Auth::user()->creatorId();
                 $employee = Employee::create(
                     [
                         'user_id' => $user->id,
@@ -126,7 +127,7 @@ class EmployeeController extends Controller
                         'address' => $request['address'],
                         'email' => $request['email'],
                         'password' => Hash::make($request['password']),
-                        'employee_id' => $this->employeeNumber(),
+                        'employee_id' => $this->employeeNumber($createdBy),
                         // 'biometric_emp_id' => !empty($request['biometric_emp_id']) ? $request['biometric_emp_id'] : '',
                         'branch_id' => $request['branch_id'],
                         'department_id' => $request['department_id'],
@@ -139,7 +140,7 @@ class EmployeeController extends Controller
                         'bank_identifier_code' => $request['bank_identifier_code'] ?? null,
                         'branch_location' => $request['branch_location'] ?? null,
                         'tax_payer_id' => $request['tax_payer_id'] ?? null,
-                        'created_by' => Auth::user()->type == 'super admin' ? $request['created_by'] :  Auth::user()->creatorId()
+                        'created_by' => $createdBy
                     ]
                 );
 

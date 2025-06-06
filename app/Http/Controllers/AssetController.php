@@ -52,6 +52,7 @@ class AssetController extends Controller
         }
 
         $employee = Employee::with('user')->find($request->employee_id);
+
         if (empty($employee)) {
             return response()->json([
                 'status' => false,
@@ -68,9 +69,8 @@ class AssetController extends Controller
             ], 400);
         }
 
-        $asset = Asset::create($request->all() + [
-            'created_by' => Auth::user()->type == 'super admin' ? $request->created_by : $employee?->user->creatorId(),
-        ]);
+        $request['created_by'] = Auth::user()->type == 'super admin' ? $request->created_by : $employee?->user->creatorId();
+        $asset = Asset::create($request->all());
 
         return response()->json([
             'status' => true,
@@ -140,9 +140,8 @@ class AssetController extends Controller
             ], 404);
         }
 
-        $asset->update($request->all() + [
-            'created_by' => Auth::user()->type == 'super admin' ? $request->created_by :  $employee?->user->creatorId(),
-        ]);
+        $request['created_by'] = Auth::user()->type == 'super admin' ? $request->created_by : $employee?->user->creatorId();
+        $asset->update($request->all());
 
         return response()->json([
             'status' => true,

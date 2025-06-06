@@ -87,6 +87,76 @@ class ProjectController extends Controller
         ], 200);
     }
 
+    public function show($id)
+    {
+        if (!Auth::user()->can('Manage Project')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Permission denied.',
+            ], 403);
+        }
+
+        $user = User::with('employee')->where('id', Auth::user()->id)->first();
+        $employee = $user->employee;
+        $companyTz = Utility::getCompanySchedule(Auth::user()->creatorId())['company_timezone'];
+
+        // Get projects based on role
+        // If user has admin role or can manage all projects, show all projects
+        // Otherwise show only projects where the employee is a member
+
+        $query = Project::query()->where('id', $id);
+
+        // if (!Auth::user()->can('Manage All Projects')) {
+        $query->whereHas('members', function ($q) use ($user) {
+            $q->where('project_members.user_id', $user->id);
+        });
+        // }
+
+        $project = $query->with(['tasks'])
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        // Count projects by status for the last month
+        // $startOfMonth = Carbon::now()->startOfMonth();
+        // $endOfMonth = Carbon::now()->endOfMonth();
+
+        $projectCounts = [
+            'active' => 0,
+            'on_hold' => 0,
+            'completed' => 0
+        ];
+
+        // if (!Auth::user()->can('Manage All Projects')) {
+        $statusCounts = Project::whereHas('members', function ($q) use ($user) {
+            $q->where('project_members.user_id', $user->id);
+        })
+            // ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+
+        // } else {
+        //     $statusCounts = Project::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+        //         ->select('status', DB::raw('count(*) as count'))
+        //         ->groupBy('status')
+        //         ->pluck('count', 'status')
+        //         ->toArray();
+        // }
+
+        foreach ($statusCounts as $status => $count) {
+            $projectCounts[$status] = $count;
+        }
+        return response()->json([
+            'status' => true,
+            'message' => 'Projects retrieved successfully',
+            'data' => [
+                'projects' => $this->formatProjectResponse($project, $companyTz, true),
+                'project_counts' => $projectCounts,
+            ]
+        ], 200);
+    }
+
     /**
      * Format project data for response
      *
@@ -94,13 +164,13 @@ class ProjectController extends Controller
      * @param string $timezone
      * @return array
      */
-    private function formatProjectResponse($project, $timezone)
+    private function formatProjectResponse($project, $timezone, $isShow = false)
     {
-        $completedTasks = $project->tasksByStatus('completed')->count();
+        $completedTasks = $project?->tasksByStatus('completed')?->count();
         $totalTasks = $project->tasks->count();
         $progress = $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100) : 0;
 
-        return [
+        $arr = [
             'id' => $project->id,
             'name' => $project->name,
             'description' => $project->description,
@@ -114,5 +184,13 @@ class ProjectController extends Controller
             'created_at' => Carbon::parse($project->created_at)->setTimezone($timezone)->format('Y-m-d H:i:s'),
             'updated_at' => Carbon::parse($project->updated_at)->setTimezone($timezone)->format('Y-m-d H:i:s'),
         ];
+
+        // Cara yang benar untuk menambahkan tasks
+        if ($isShow) {
+            $arr['tasks'] = $project->tasks()->assignedTo(Auth::user()->id)->get();
+            // $arr['tasks'] = $project->tasks()->with('assignees')->get();
+        }
+
+        return $arr;
     }
 }

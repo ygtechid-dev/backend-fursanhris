@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('email');
             $table->string('password');
 
-            $table->string('employee_id');
+            $table->string('employee_id')->unique();
             $table->integer('branch_id')->nullable();
             $table->integer('department_id')->nullable();
             $table->integer('designation_id')->nullable();

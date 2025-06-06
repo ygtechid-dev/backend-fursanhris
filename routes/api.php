@@ -54,6 +54,23 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/profile', [AuthenticationController::class, 'checkAuth']);
         Route::get('/office-assets', [Mobile\AssetController::class, 'index']);
 
+        Route::prefix('notifications')->group(function () {
+            Route::get('/', [Mobile\NotificationController::class, 'index']);
+            Route::get('/stats', [Mobile\NotificationController::class, 'stats']);
+            Route::get('/unread-count', [Mobile\NotificationController::class, 'unreadCount']);
+            Route::get('/metadata', [Mobile\NotificationController::class, 'getMetadata']);
+            Route::post('/mark-all-read', [Mobile\NotificationController::class, 'markAllAsRead']);
+            Route::post('/mark-multiple-read', [Mobile\NotificationController::class, 'markMultipleAsRead']);
+            Route::delete('/delete-multiple', [Mobile\NotificationController::class, 'destroyMultiple']);
+            Route::delete('/clear-read', [Mobile\NotificationController::class, 'clearRead']);
+
+            // Single notification routes
+            Route::get('/{id}', [Mobile\NotificationController::class, 'show']);
+            Route::post('/{id}/mark-read', [Mobile\NotificationController::class, 'markAsRead']);
+            Route::post('/{id}/mark-unread', [Mobile\NotificationController::class, 'markAsUnread']);
+            Route::delete('/{id}', [Mobile\NotificationController::class, 'destroy']);
+        });
+
         /** Leave */
         Route::prefix('leaves')->group(function () {
             Route::get('/', [Mobile\LeaveController::class, 'index']);
@@ -71,8 +88,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         /** Project */
         Route::prefix('projects')->group(function () {
             Route::get('/', [Mobile\ProjectController::class, 'index']);
-
             Route::get('all-task', [Mobile\TaskController::class, 'getAssignedTasks']);
+            Route::get('{id}', [Mobile\ProjectController::class, 'show']);
+
             Route::prefix('tasks')->group(function () {
                 Route::put('{taskId}/update-status', [Mobile\TaskController::class, 'updateTaskStatus']);
                 Route::put('create-task', [Mobile\TaskController::class, 'createOwnTask']);
