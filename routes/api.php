@@ -147,6 +147,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         Route::apiResource('employees', Controllers\EmployeeController::class);
 
+        Route::get('/export-salary-component', [Controllers\EmployeeSalaryController::class, 'exportSalaryComponent']);
+        Route::post('/import-salary-component', [Controllers\EmployeeSalaryController::class, 'importSalaryComponent']);
+
         /** Dashboard */
         Route::get('/dashboard/card-stats', [Controllers\DashboardController::class, 'getCardStats']);
 

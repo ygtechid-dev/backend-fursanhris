@@ -45,6 +45,21 @@ class Employee extends Model
         'documents' => 'json'
     ];
 
+    public function allowances()
+    {
+        return $this->hasMany(Allowance::class, 'employee_id');
+    }
+
+    public function deductions()
+    {
+        return $this->hasMany(Deduction::class, 'employee_id');
+    }
+
+    public function overtimes()
+    {
+        return $this->hasMany(Overtime::class, 'employee_id');
+    }
+
     public function company()
     {
         return $this->belongsTo(User::class, 'created_by');
