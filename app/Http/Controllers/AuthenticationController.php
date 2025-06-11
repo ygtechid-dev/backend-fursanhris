@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 
@@ -423,6 +424,80 @@ class AuthenticationController extends Controller
                 'user' => $user,
             ]
         ], 200);
+    }
+
+    public function updateAccountPhotoProfile(Request $request)
+    {
+        try {
+            $request->validate([
+                'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            ]);
+
+            $user = User::with('employee')->find(Auth::user()->id);
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'User not found',
+                ], 404);
+            }
+
+            // Handle upload avatar menggunakan Laravel Storage
+            if ($request->hasFile('avatar')) {
+                $avatar = $request->file('avatar');
+
+                if ($avatar->isValid()) {
+                    // Hapus avatar lama jika ada (hanya hapus file, bukan URL)
+                    // if ($user->avatar && !filter_var($user->avatar, FILTER_VALIDATE_URL)) {
+                    //     // Jika avatar lama adalah nama file (bukan URL), hapus file
+                    //     if (Storage::disk('public')->exists('avatars/' . $user->avatar)) {
+                    //         Storage::disk('public')->delete('avatars/' . $user->avatar);
+                    //     }
+                    // }
+
+                    // Generate nama file unik
+                    $fileName = time() . '_' . $user->id . '.' . $avatar->getClientOriginalExtension();
+
+                    // Upload file ke storage/app/public/avatars
+                    $path = $avatar->storeAs('avatars', $fileName, 'public');
+
+                    if ($path) {
+                        // Simpan full URL ke database agar bisa diakses langsung dari mobile
+                        $fullUrl = url(Storage::url('avatars/' . $fileName));
+                        $updateData['avatar'] = $fullUrl;
+                    } else {
+                        return response()->json([
+                            'status' => false,
+                            'message' => 'Failed to upload avatar',
+                        ], 500);
+                    }
+                }
+            }
+
+            // Update user data
+            $user->update($updateData);
+            $user->refresh();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Update account profile successful',
+                'data' => [
+                    'user' => $user,
+                ]
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while updating profile',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function logout(Request $request)

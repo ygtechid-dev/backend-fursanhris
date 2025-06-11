@@ -48,6 +48,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Route untuk mobile
     Route::middleware(CheckPlatformAccess::class . ':mobile')->prefix('mobile')->group(function () {
         Route::post('/update-account-profile', [AuthenticationController::class, 'updateAccountProfile']);
+        Route::post('/update-photo-profile', [AuthenticationController::class, 'updateAccountPhotoProfile']);
         Route::post('/resign', [Mobile\ResignationController::class, 'store']);
         Route::get('/get-employee-working-period', [Mobile\AttendanceEmployeeController::class, 'getEmployeeWorkingPeriod']);
 
