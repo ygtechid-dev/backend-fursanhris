@@ -58,7 +58,7 @@ class LeaveTypeController extends Controller
             $leavetype             = new LeaveType();
             $leavetype->title      = $request->title;
             $leavetype->days       = $request->days;
-            $leavetype->created_by = Auth::user()->creatorId();
+            $leavetype->created_by = Auth::user()->type == 'super admin' ? $request->created_by :  Auth::user()->creatorId();
             $leavetype->save();
 
             return redirect()->route('leavetype.index')->with('success', __('LeaveType  successfully created.'));
@@ -79,45 +79,41 @@ class LeaveTypeController extends Controller
     }
 
 
-    public function update(Request $request, LeaveType $leavetype)
+    public function update(Request $request)
     {
         if (Auth::user()->can('Edit Leave Type')) {
-            if ($leavetype->created_by == Auth::user()->creatorId()) {
-                $validator = Validator::make(
-                    $request->all(),
-                    [
-                        'title' => 'required',
-                        'days' => 'required',
-                    ]
-                );
+            $validator = Validator::make(
+                $request->all(),
+                [
+                    'title' => 'required',
+                    'days' => 'required',
+                ]
+            );
 
-                if ($validator->fails()) {
-                    $messages = $validator->getMessageBag();
+            if ($validator->fails()) {
+                $messages = $validator->getMessageBag();
 
-                    return response()->json([
-                        'status'   => false,
-                        'message'   => $messages->first()
-                    ], 400);
-                }
-
-                $leavetype->title = $request->title;
-                $leavetype->days  = $request->days;
-                $leavetype->save();
-
-                // return redirect()->route('leavetype.index')->with('success', __('LeaveType successfully updated.'));
                 return response()->json([
-                    'status' => true,
-                    'message' => 'LeaveType successfully updated',
-                    'data' => [
-                        'leave_type' => $leavetype,
-                    ],
-                ], 201);
-            } else {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Permission denied.',
-                ], 403);
+                    'status'   => false,
+                    'message'   => $messages->first()
+                ], 400);
             }
+
+            $leavetype = LeaveType::find($request->id);
+
+            $leavetype->title = $request->title;
+            $leavetype->days  = $request->days;
+            $leavetype->created_by = Auth::user()->type == 'super admin' ? $request->created_by :  Auth::user()->creatorId();
+            $leavetype->save();
+
+            // return redirect()->route('leavetype.index')->with('success', __('LeaveType successfully updated.'));
+            return response()->json([
+                'status' => true,
+                'message' => 'LeaveType successfully updated',
+                'data' => [
+                    'leave_type' => $leavetype,
+                ],
+            ], 201);
         } else {
             return response()->json([
                 'status' => false,
@@ -126,21 +122,32 @@ class LeaveTypeController extends Controller
         }
     }
 
-    public function destroy(LeaveType $leavetype)
+    public function destroy($id)
     {
         if (Auth::user()->can('Delete Leave Type')) {
-            if ($leavetype->created_by == Auth::user()->creatorId()) {
-                $leave     = Leave::where('leave_type_id', $leavetype->id)->get();
-                if (count($leave) == 0) {
-                    $leavetype->delete();
-                } else {
-                    return redirect()->route('leavetype.index')->with('error', __('This leavetype has leave. Please remove the leave from this leavetype.'));
-                }
-
-                return redirect()->route('leavetype.index')->with('success', __('LeaveType successfully deleted.'));
-            } else {
-                return redirect()->back()->with('error', __('Permission denied.'));
+            $leavetype = LeaveType::find($id);
+            if (empty($leavetype)) {
+                response()->json([
+                    'status' => false,
+                    'message' => 'Leave Type not found',
+                ], 404);
             }
+
+            $leave     = Leave::where('leave_type_id', $leavetype->id)->get();
+            if (count($leave) == 0) {
+
+                $leavetype->delete();
+            } else {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'This leavetype has leave. Please remove the leave from this leavetype.',
+                ], 500);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Leave Type successfully deleted',
+            ], 200);
         } else {
             return response()->json([
                 'status' => false,

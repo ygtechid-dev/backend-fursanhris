@@ -97,11 +97,20 @@ class ResignationController extends Controller
             ], 422);
         }
 
+        $documentPath = null;
+        if ($request->hasFile('document_path')) {
+            $receipt = $request->file('document_path');
+            $fileName = time() . '-' . $receipt->getClientOriginalName();
+            $filePath = $receipt->storeAs('resignation_documents', $fileName, 'public');
+            $documentPath = url('/storage/' . $filePath);
+        }
+
         $resignation = Resignation::create([
             'employee_id' => $request->employee_id,
             'notice_date' => $request->notice_date,
             'resignation_date' => $request->resignation_date,
             'description' => $request->description,
+            'document_path' => $documentPath,
             'created_by' => Auth::user()->creatorId(),
         ]);
 
@@ -189,6 +198,8 @@ class ResignationController extends Controller
             ], 422);
         }
 
+
+
         $resignation->update($request->only([
             'employee_id',
             'notice_date',
@@ -268,6 +279,7 @@ class ResignationController extends Controller
             'description' => $resignation->description,
             'created_by' => $resignation->created_by,
             'company' => $resignation->company,
+            'document_path' => $resignation->document_path,
             'status' => date('Y-m-d') > $resignation->resignation_date ? 'Processed' : 'Upcoming',
             'created_at' => $resignation->created_at->format('Y-m-d H:i:s'),
             'created_at_formatted' => $resignation->created_at

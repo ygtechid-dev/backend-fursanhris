@@ -21,7 +21,8 @@ class Leave extends Model
         'approved_by',
         'approved_at',
         'rejected_by',
-        'rejected_at'
+        'rejected_at',
+        'document_path'
     ];
 
     protected $casts = [

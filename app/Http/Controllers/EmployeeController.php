@@ -59,6 +59,9 @@ class EmployeeController extends Controller
                 'department_id' => 'required',
                 'designation_id' => 'required',
                 'document.*' => 'nullable',
+                'family_name' => 'string',
+                'family_address' => 'string',
+                'family_phone' => 'string',
             ];
 
             // $rules['biometric_emp_id'] = [
@@ -140,6 +143,9 @@ class EmployeeController extends Controller
                         'bank_identifier_code' => $request['bank_identifier_code'] ?? null,
                         'branch_location' => $request['branch_location'] ?? null,
                         'tax_payer_id' => $request['tax_payer_id'] ?? null,
+                        'family_name' => $request['family_name'] ?? null,
+                        'family_phone' => $request['family_phone'] ?? null,
+                        'family_address' => $request['family_address'] ?? null,
                         'created_by' => $createdBy
                     ]
                 );
@@ -197,7 +203,9 @@ class EmployeeController extends Controller
             $branches     = Branch::where('created_by', Auth::user()->creatorId())->get()->pluck('name', 'id');
             $departments  = Department::where('created_by', Auth::user()->creatorId())->get()->pluck('name', 'id');
             $designations = Designation::where('created_by', Auth::user()->creatorId())->get()->pluck('name', 'id');
-            $employee = Employee::where('id', '=', $empId)->orWhere('user_id', '=', $empId)->where('created_by', Auth::user()->creatorId())->first();
+            $employee = Employee::where('id', '=', $empId)
+                // ->orWhere('user_id', '=', $empId)
+                ->where('created_by', Auth::user()->creatorId())->first();
             // $employee     = Employee::find($empId);
             $employeeId  = Auth::user()->employeeIdFormat($employee->employee_id);
             // $empId        = Crypt::decrypt($id);

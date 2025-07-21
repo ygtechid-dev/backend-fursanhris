@@ -40,6 +40,7 @@ class LeaveController extends Controller
             'leave_type' => $leave->leaveType,
             'approver' => $leave->approver,
             'rejecter' => $leave->rejecter,
+            'document_path' => $leave->document_path,
 
         ];
     }
@@ -100,6 +101,7 @@ class LeaveController extends Controller
                 'end_date' => 'required|date|after_or_equal:start_date',
                 'leave_reason' => 'required',
                 'remark' => 'nullable',
+                'document_path' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
             ]
         );
 
@@ -199,6 +201,15 @@ class LeaveController extends Controller
         // Create leave request
         try {
             $companyTz = Utility::getCompanySchedule($employee?->user->creatorId())['company_timezone'];
+
+            $documentPath = null;
+            if ($request->hasFile('document_path')) {
+                $receipt = $request->file('document_path');
+                $fileName = time() . '-' . $receipt->getClientOriginalName();
+                $filePath = $receipt->storeAs('leave_documents', $fileName, 'public');
+                $documentPath = url('/storage/' . $filePath);
+            }
+
             $leave = Leave::create([
                 'employee_id' => $employee->id,
                 'leave_type_id' => $leave_type->id,
@@ -213,6 +224,7 @@ class LeaveController extends Controller
                 'created_by' => Auth::user()->type == 'super admin' ? $request->created_by :  $employee?->user->creatorId(),
                 'approved_by'   => Auth::id(),
                 'approved_at'   => now(),
+                'document_path' => $documentPath,
             ]);
 
 

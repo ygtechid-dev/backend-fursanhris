@@ -35,6 +35,10 @@ class Employee extends Model
         'account_type',
         'salary',
         'created_by',
+
+        'family_name',
+        'family_address',
+        'family_phone',
     ];
 
     protected $hidden = [

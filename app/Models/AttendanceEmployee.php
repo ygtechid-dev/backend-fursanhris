@@ -136,6 +136,7 @@ class AttendanceEmployee extends Model
                 'clock_in_formatted' => $clockIn ? $clockIn->format('Y-m-d H:i:s') : null,
                 'clock_out_formatted' => $clockOut ? $clockOut->format('Y-m-d H:i:s') : null,
                 'company' => $attendance->company,
+                'created_by' => $attendance->created_by,
             ];
         });
     }

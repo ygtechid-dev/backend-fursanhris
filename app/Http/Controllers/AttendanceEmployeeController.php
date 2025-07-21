@@ -187,7 +187,8 @@ class AttendanceEmployeeController extends Controller
                 'total_rest' => $attendance->total_rest,
                 'timezone' => $attendance->timezone,
                 'created_at' => $attendance->created_at,
-                'updated_at' => $attendance->updated_at
+                'updated_at' => $attendance->updated_at,
+                'created_by' => $attendance->created_by,
             ];
 
             return response()->json([
