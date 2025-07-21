@@ -30,6 +30,7 @@ class User extends Authenticatable
         'avatar',
         'lang',
         'plan',
+        'subscription',        // KOLOM BARU
         'storage_limit',
         // 'referral_code',
         // 'used_referral_code',
@@ -67,7 +68,6 @@ class User extends Authenticatable
 
     public function employee_name()
     {
-
         $first_name = $this->first_name;
         $last_name = $this->last_name;
 
@@ -93,7 +93,6 @@ class User extends Authenticatable
 
     public function creatorId()
     {
-
         if ($this->type == 'company' || $this->type == 'super admin') {
             return $this->id;
         } else {

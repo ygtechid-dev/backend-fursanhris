@@ -23,158 +23,88 @@ class AuthenticationController extends Controller
         return view('auth.login');
     }
 
-    // public function login(LoginRequest $request)
-    // {
-    //     $request->authenticate();
-
-    //     $user = Auth::user();
-    //     if ($user->is_active == 0) {
-    //         Auth::user()->tokens()->delete();
-    //         return response()->json([
-    //             'message'   => 'User inactive',
-    //         ], 403);
-    //     }
-
-    //     if ($user->is_disable == 0) {
-    //         Auth::user()->tokens()->delete();
-    //         return response()->json([
-    //             'message'   => 'User disabled',
-    //         ], 403);
-    //     }
-
-    //     $user = Auth::user();
-
-    //     // if ($user->type != 'company' && $user->type != 'super admin') {
-    //     //     // $ip = '49.36.83.154'; // This is static ip address
-    //     //     $ip = $_SERVER['REMOTE_ADDR']; // your ip address here
-    //     //     $query = @unserialize(file_get_contents('http://ip-api.com/php/' . $ip));
-
-    //     //     $whichbrowser = new \WhichBrowser\Parser($_SERVER['HTTP_USER_AGENT']);
-    //     //     if ($whichbrowser->device->type == 'bot') {
-    //     //         return;
-    //     //     }
-    //     //     $referrer = isset($_SERVER['HTTP_REFERER']) ? parse_url($_SERVER['HTTP_REFERER']) : null;
-
-    //     //     /* Detect extra details about the user */
-    //     //     $query['browser_name'] = $whichbrowser->browser->name ?? null;
-    //     //     $query['os_name'] = $whichbrowser->os->name ?? null;
-    //     //     $query['browser_language'] = isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? mb_substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, 2) : null;
-    //     //     // $query['device_type'] = Utility::get_device_type($_SERVER['HTTP_USER_AGENT']);
-    //     //     $query['referrer_host'] = !empty($referrer['host']);
-    //     //     $query['referrer_path'] = !empty($referrer['path']);
-
-
-    //     //     isset($query['timezone']) ? date_default_timezone_set($query['timezone']) : '';
-
-
-    //     //     $json = json_encode($query);
-
-    //     //     $login_detail = new LoginDetail();
-    //     //     $login_detail->user_id = Auth::user()->id;
-    //     //     $login_detail->ip = $ip;
-    //     //     $login_detail->date = date('Y-m-d H:i:s');
-    //     //     $login_detail->Details = $json;
-    //     //     $login_detail->created_by = Auth::user()->creatorId();
-    //     //     $login_detail->save();
-    //     // }
-
-    //     $token = $user->createToken(env('APP_NAME'))->plainTextToken;
-    //     // $user->last_login = date('Y-m-d H:i:s');
-    //     // $user->save();
-    //     return response()->json([
-    //         'message'   => 'Succcessfully Login',
-    //         'data'      => Auth::user(),
-    //         'token'     => $token
-    //     ]);
-    // }
-    // {
-    //     $credentials = $request->validate([
-    //         'username' => 'required',
-    //         'password' => 'required',
-    //     ]);
-
-    //     if (Auth::attempt($credentials)) {
-    //         $request->session()->regenerate();
-
-    //         if (!empty(Auth::user())) {
-    //             return redirect()->route('dashboard.index');
-    //         }
-    //     }
-
-    //     return back()->with('loginError', 'Login Failed!');
-    // }
-
-    // Revisi 2
-    // public function login(LoginRequest $request)
-    // {
-    //     try {
-    //         // Validate credentials
-    //         if (!Auth::attempt($request->only('email', 'password'))) {
-    //             throw ValidationException::withMessages([
-    //                 'email' => ['The provided credentials are incorrect.'],
-    //             ]);
-    //         }
-
-    //         $user = Auth::user();
-
-    //         // Check user status
-    //         if (!$user->is_active) {
-    //             return response()->json([
-    //                 'status' => false,
-    //                 'message' => 'Your account is inactive',
-    //             ], 403);
-    //         }
-
-    //         if ($user->is_disable == 0) {
-    //             return response()->json([
-    //                 'status' => false,
-    //                 'message' => 'Your account has been disabled',
-    //             ], 403);
-    //         }
-
-    //         // Validate platform
-    //         $platform = $request->platform;
-    //         if (!in_array($platform, ['web', 'mobile'])) {
-    //             return response()->json([
-    //                 'status' => false,
-    //                 'message' => 'Invalid platform specified',
-    //             ], 400);
-    //         }
-
-    //         // Revoke existing tokens for the same platform
-    //         $user->tokens()->where('name', $platform)->delete();
-
-    //         // Create new token with platform-specific name
-    //         $token = $user->createToken($platform, [
-    //             $platform === 'web' ? 'web-access' : 'mobile-access'
-    //         ])->plainTextToken;
-
-    //         // Store login details for analytics
-    //         // $this->storeLoginDetails($request, $user, $platform);
-
-    //         // Update last login
-    //         $user->update([
-    //             'last_login' => now(),
-    //             'last_login_platform' => $platform
-    //         ]);
-
-    //         return response()->json([
-    //             'status' => true,
-    //             'message' => 'Login successful',
-    //             'data' => [
-    //                 'user' => $user,
-    //                 'token' => $token,
-    //                 'token_type' => 'Bearer',
-    //                 'platform' => $platform
-    //             ]
-    //         ], 200);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'status' => false,
-    //             'message' => $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
+    /**
+     * Custom password verification dengan fallback untuk berbagai hash algorithm
+     */
+    private function verifyPassword($plainPassword, $hashedPassword, $user)
+    {
+        // Debug logging
+        Log::info("Attempting password verification for user: {$user->email}");
+        Log::info("Hash algorithm detected: " . substr($hashedPassword, 0, 4));
+        
+        // 1. Coba bcrypt check dulu (Laravel default)
+        try {
+            $bcryptResult = Hash::check($plainPassword, $hashedPassword);
+            Log::info("Bcrypt check result: " . ($bcryptResult ? 'true' : 'false'));
+            
+            if ($bcryptResult) {
+                Log::info("Password verified with bcrypt for user: {$user->email}");
+                return true;
+            }
+        } catch (\Exception $e) {
+            Log::warning("Bcrypt check failed for user {$user->email}: " . $e->getMessage());
+        }
+        
+        // 2. Cek apakah menggunakan Blowfish ($2a$, $2x$, $2y$)
+        if (preg_match('/^\$2[axy]\$/', $hashedPassword)) {
+            Log::info("Detected Blowfish hash for user: {$user->email}");
+            
+            // Gunakan password_verify PHP native untuk Blowfish
+            if (password_verify($plainPassword, $hashedPassword)) {
+                Log::info("Password verified with Blowfish for user: {$user->email}");
+                
+                // Migrate ke Laravel bcrypt ($2y$)
+                $newHashedPassword = Hash::make($plainPassword);
+                $user->password = $newHashedPassword;
+                $user->save();
+                Log::info("Password migrated from Blowfish to Laravel bcrypt for user: {$user->email}");
+                return true;
+            }
+        }
+        
+        // 3. Cek apakah password plain text (exact match)
+        if ($hashedPassword === $plainPassword) {
+            Log::info("Password matched as plain text for user: {$user->email}");
+            // Update password ke bcrypt untuk security
+            $newHashedPassword = Hash::make($plainPassword);
+            $user->password = $newHashedPassword;
+            $user->save();
+            Log::info("Password migrated from plain text to bcrypt for user: {$user->email}");
+            return true;
+        }
+        
+        // 4. Cek apakah password di-hash dengan algorithm lain (MD5, SHA1, etc)
+        $algorithms = [
+            'md5' => md5($plainPassword),
+            'sha1' => sha1($plainPassword),
+            'sha256' => hash('sha256', $plainPassword),
+        ];
+        
+        foreach ($algorithms as $algo => $hashedPlain) {
+            if ($hashedPassword === $hashedPlain) {
+                Log::info("Password matched with {$algo} for user: {$user->email}");
+                // Update password ke bcrypt
+                $newHashedPassword = Hash::make($plainPassword);
+                $user->password = $newHashedPassword;
+                $user->save();
+                Log::info("Password migrated from {$algo} to bcrypt for user: {$user->email}");
+                return true;
+            }
+        }
+        
+        // 5. Cek case insensitive untuk plain text
+        if (strtolower($hashedPassword) === strtolower($plainPassword)) {
+            Log::info("Password matched case-insensitive for user: {$user->email}");
+            $newHashedPassword = Hash::make($plainPassword);
+            $user->password = $newHashedPassword;
+            $user->save();
+            Log::info("Password migrated (case-insensitive) to bcrypt for user: {$user->email}");
+            return true;
+        }
+        
+        Log::warning("All password verification methods failed for user: {$user->email}");
+        return false;
+    }
 
     public function login(LoginRequest $request)
     {
@@ -187,28 +117,32 @@ class AuthenticationController extends Controller
                 ]);
             }
 
-            // Prepare credentials array based on explicitly specified login type
-            $credentials = [
-                $request->login_type => $request->login,
-                'password' => $request->password
-            ];
-
             // Find user based on the specified login type
             $user = null;
             switch ($request->login_type) {
                 case 'email':
                     $user = User::where('email', $request->login)->first();
+                    Log::info("Searching user by email: {$request->login}");
                     break;
                 case 'phone':
                     $user = User::whereHas('employee', function ($query) use ($request) {
                         $query->where('phone', $request->login);
                     })->first();
+                    Log::info("Searching user by phone: {$request->login}");
                     break;
                 case 'employee_id':
                     $user = User::whereHas('employee', function ($query) use ($request) {
                         $query->where('employee_id', $request->login);
                     })->first();
+                    Log::info("Searching user by employee_id: {$request->login}");
                     break;
+            }
+
+            // Log user search result
+            if ($user) {
+                Log::info("User found: ID={$user->id}, Email={$user->email}, Type={$user->type}");
+            } else {
+                Log::warning("No user found for login_type={$request->login_type}, login={$request->login}");
             }
 
             // Validate user exists
@@ -219,8 +153,8 @@ class AuthenticationController extends Controller
             }
 
             // Additional validation steps
-            // Attempt authentication using password verification
-            if (!Hash::check($request->password, $user->password)) {
+            // Attempt authentication using custom password verification
+            if (!$this->verifyPassword($request->password, $user->password, $user)) {
                 throw ValidationException::withMessages([
                     'login' => ['The provided credentials are incorrect.']
                 ]);
@@ -251,7 +185,7 @@ class AuthenticationController extends Controller
             }
 
             // *** CHECK TERMINATION STATUS ***
-            if ($user->isTerminated()) {
+            if (method_exists($user, 'isTerminated') && $user->isTerminated()) {
                 // Get active termination data
                 $termination = $user->activeTermination()->first();
 
@@ -270,9 +204,6 @@ class AuthenticationController extends Controller
                         'message' => 'Your account has been terminated and access is no longer available'
                     ], 403);
                 }
-
-                // If we reach here, user is terminated but allowed to access via mobile
-                // and they are attempting to login from mobile, so we allow it to continue
             }
 
             // Revoke existing tokens for the same platform
@@ -297,10 +228,9 @@ class AuthenticationController extends Controller
                 'platform' => $platform
             ];
 
-            if ($user->isTerminated()) {
+            if (method_exists($user, 'isTerminated') && $user->isTerminated()) {
                 $responseData['termination'] = [
                     'status' => 'terminated',
-                    // 'mobile_access_only' => true,
                     'termination_date' => $user->activeTermination()->first()->termination_date
                 ];
             }
@@ -353,23 +283,29 @@ class AuthenticationController extends Controller
             'type' => 'employee',
             'avatar' => '',
             'lang' => 'en',
+            'subscription' => 'Basic', // Default subscription
+            'plan' => 0, // Default plan Basic
+            'is_active' => 1,
+            'is_login_enable' => 1,
+            'dark_mode' => 0,
+            'messenger_color' => '#2180f3',
+            'is_disable' => 1,
             'company_id' => $validatedData['company_id'],
             'password' => Hash::make($validatedData['password']),
             'created_by' => $companyUser->id,
+            'email_verified_at' => now(),
         ]);
         $user->assignRole('employee');
 
-        Employee::create(
-            [
-                'user_id' => $user->id,
-                'name' => $user->first_name . ' ' . $user->last_name,
-                'phone' => $validatedData['phone'],
-                'email' => $validatedData['email'],
-                'password' => Hash::make($validatedData['password']),
-                'employee_id' => (new EmployeeController)->employeeNumber($companyUser->id),
-                'created_by' => $companyUser->id,
-            ]
-        );
+        Employee::create([
+            'user_id' => $user->id,
+            'name' => $user->first_name . ' ' . $user->last_name,
+            'phone' => $validatedData['phone'],
+            'email' => $validatedData['email'],
+            'password' => Hash::make($validatedData['password']),
+            'employee_id' => (new EmployeeController)->employeeNumber($companyUser->id),
+            'created_by' => $companyUser->id,
+        ]);
 
         // Create new token with platform-specific name
         $token = $user->createToken($platform, [
@@ -379,11 +315,8 @@ class AuthenticationController extends Controller
         // Update last login information
         $user->update([
             'last_login' => now(),
-            // 'last_login_platform' => $platform
         ]);
 
-        // Log the user in or redirect them to the login page
-        /** Format response bukan redirect tapi ganti menjadi json */
         return response()->json([
             'status' => true,
             'message' => 'Sign up successful',
@@ -398,7 +331,6 @@ class AuthenticationController extends Controller
 
     public function updateAccountProfile(Request $request)
     {
-        // dd($request->all());
         $user = User::with('employee')->find(Auth::user()->id);
 
         $user->update([
@@ -411,7 +343,7 @@ class AuthenticationController extends Controller
             'name' => $user->first_name . ' ' . $user->last_name,
             'phone' => $request['phone'],
             'dob' => $request['dob'],
-            'branch_id' => 1, // buat logic pengecekan departement dan branch id dari designation
+            'branch_id' => 1,
             'department_id' => 1,
             'designation_id' => $request['designation_id'],
             'address' => $request['address'],
@@ -442,19 +374,13 @@ class AuthenticationController extends Controller
                 ], 404);
             }
 
+            $updateData = [];
+
             // Handle upload avatar menggunakan Laravel Storage
             if ($request->hasFile('avatar')) {
                 $avatar = $request->file('avatar');
 
                 if ($avatar->isValid()) {
-                    // Hapus avatar lama jika ada (hanya hapus file, bukan URL)
-                    // if ($user->avatar && !filter_var($user->avatar, FILTER_VALIDATE_URL)) {
-                    //     // Jika avatar lama adalah nama file (bukan URL), hapus file
-                    //     if (Storage::disk('public')->exists('avatars/' . $user->avatar)) {
-                    //         Storage::disk('public')->delete('avatars/' . $user->avatar);
-                    //     }
-                    // }
-
                     // Generate nama file unik
                     $fileName = time() . '_' . $user->id . '.' . $avatar->getClientOriginalExtension();
 
@@ -475,8 +401,10 @@ class AuthenticationController extends Controller
             }
 
             // Update user data
-            $user->update($updateData);
-            $user->refresh();
+            if (!empty($updateData)) {
+                $user->update($updateData);
+                $user->refresh();
+            }
 
             return response()->json([
                 'status' => true,
@@ -529,7 +457,6 @@ class AuthenticationController extends Controller
         ]);
 
         // Generate reset token
-        // $token = Str::random(60);
         $token = 'token';
 
         // Store reset token
@@ -544,11 +471,6 @@ class AuthenticationController extends Controller
         //Delete Existing tokens
         $user = User::where('email', $request->email)->first();
         $user->tokens()->where('name', 'mobile')->delete();
-
-
-
-        // Send reset email
-        // Mail::to($request->email)->send(new PasswordResetMail($token));
 
         return response()->json([
             'status' => true,
@@ -600,7 +522,7 @@ class AuthenticationController extends Controller
             ], 400);
         }
 
-        // Update password
+        // Update password dengan hash yang benar
         $user = User::where('email', $request->email)->first();
         $user->password = Hash::make($request->password);
         $user->save();
@@ -623,6 +545,113 @@ class AuthenticationController extends Controller
             'message' => 'Profile retrived successfully',
             'data' => [
                 'user' => User::with('employee.designation')->find(Auth::id()),
+            ]
+        ], 200);
+    }
+
+    /**
+     * Method untuk debug password - HAPUS DI PRODUCTION!
+     */
+    public function debugPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required'
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+        
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        $debugInfo = [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'stored_password' => $user->password,
+            'stored_password_length' => strlen($user->password),
+            'input_password' => $request->password,
+            'input_password_length' => strlen($request->password),
+            'hash_algorithm' => $this->detectHashAlgorithm($user->password),
+            'bcrypt_check' => false,
+            'blowfish_check' => false,
+            'plain_text_match' => $user->password === $request->password,
+            'md5_match' => $user->password === md5($request->password),
+            'sha1_match' => $user->password === sha1($request->password),
+            'sha256_match' => $user->password === hash('sha256', $request->password),
+        ];
+
+        try {
+            $debugInfo['bcrypt_check'] = Hash::check($request->password, $user->password);
+        } catch (\Exception $e) {
+            $debugInfo['bcrypt_error'] = $e->getMessage();
+        }
+
+        // Test Blowfish dengan password_verify
+        if (preg_match('/^\$2[axy]\$/', $user->password)) {
+            $debugInfo['blowfish_check'] = password_verify($request->password, $user->password);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Debug info retrieved',
+            'debug' => $debugInfo
+        ], 200);
+    }
+
+    /**
+     * Detect hash algorithm dari password
+     */
+    private function detectHashAlgorithm($password)
+    {
+        if (preg_match('/^\$2y\$/', $password)) {
+            return 'bcrypt (Laravel)';
+        } elseif (preg_match('/^\$2a\$/', $password)) {
+            return 'blowfish ($2a$)';
+        } elseif (preg_match('/^\$2x\$/', $password)) {
+            return 'blowfish ($2x$)';
+        } elseif (strlen($password) === 32 && ctype_xdigit($password)) {
+            return 'md5';
+        } elseif (strlen($password) === 40 && ctype_xdigit($password)) {
+            return 'sha1';
+        } elseif (strlen($password) === 64 && ctype_xdigit($password)) {
+            return 'sha256';
+        } else {
+            return 'unknown/plain_text';
+        }
+    }
+
+    /**
+     * Method untuk reset password user tertentu - HAPUS DI PRODUCTION!
+     */
+    public function forceResetPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'new_password' => 'required|min:6'
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+        
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Password reset successfully',
+            'data' => [
+                'email' => $user->email,
+                'new_password_hash' => $user->password
             ]
         ], 200);
     }

@@ -19,7 +19,6 @@ class UserController extends Controller
             $user = Auth::user();
             if (Auth::user()->type == 'super admin') {
                 $users = User::where('created_by', '=', $user->creatorId())->where('type', '=', 'company')->get();
-                // $CountUser = User::where('created_by')->get();
             } else {
                 $users = User::where('created_by', '=', $user->creatorId())
                     ->where('type', '!=', 'employee')
@@ -45,7 +44,7 @@ class UserController extends Controller
     public function getUser()
     {
         if (Auth::user()->can('Manage User')) {
-            $companyId = Auth::user()->id; // Company ID yang ingin Anda gunakan
+            $companyId = Auth::user()->id;
 
             // Dapatkan company user
             $company = User::where('id', $companyId)
@@ -58,11 +57,12 @@ class UserController extends Controller
             $employeeUsers = User::when(Auth::user()->type != 'super admin', function ($q) {
                 $q->where('created_by', Auth::user()->creatorId());
             })
-                ->where('id', '!=', $companyId) // Exclude the company itself
+                ->where('id', '!=', $companyId)
                 ->get();
 
             // Gabungkan company dengan employee users
             $allUsers = collect([$company])->merge($employeeUsers)
+                ->filter() // Remove null values
                 ->map(function ($user) {
                     return [
                         'id' => $user?->id,
@@ -70,6 +70,7 @@ class UserController extends Controller
                         'email' => $user->email,
                         'avatar' => $user->avatar,
                         'type' => $user->type,
+                        'subscription' => $user->subscription,
                         'created_by' => $user->created_by,
                         'employee' => $user->type == 'employee' ? $user->employee : null,
                     ];
@@ -80,13 +81,10 @@ class UserController extends Controller
                 'data' => $allUsers
             ]);
         } else {
-            return response()->json(
-                [
-                    'status' => false,
-                    'message' => __('Permission denied.')
-                ],
-                403
-            );
+            return response()->json([
+                'status' => false,
+                'message' => __('Permission denied.')
+            ], 403);
         }
     }
 
@@ -101,33 +99,23 @@ class UserController extends Controller
                 'data'      => $companies
             ]);
         } else {
-            return response()->json(
-                [
-                    'status'    => false,
-                    'message' => __('Permission denied.')
-                ],
-                403
-            );
+            return response()->json([
+                'status'    => false,
+                'message' => __('Permission denied.')
+            ], 403);
         }
     }
 
     public function store(Request $request)
     {
         if (Auth::user()->can('Create User')) {
-            // $default_language = DB::table('settings')->select('value')->where('name', 'default_language')->where('created_by', \Auth::user()->creatorId())->first();
-
-            // new company default language
-            // if ($default_language == null) {
-            //     $default_language = DB::table('settings')->select('value')->where('name', 'default_language')->first();
-            // }
-
-            $validator        = Validator::make(
+            $validator = Validator::make(
                 $request->all(),
                 [
                     'first_name' => 'required',
                     'last_name' => 'required',
                     'email' => 'required|unique:users',
-                    // 'password' => 'required',
+                    'subscription' => 'nullable|string|max:255',
                 ]
             );
             if ($validator->fails()) {
@@ -146,7 +134,6 @@ class UserController extends Controller
                 );
 
                 if ($validator->fails()) {
-                    // return redirect()->back()->with('error', $validator->errors()->first());
                     return response()->json([
                         'status'    => false,
                         'message'   => $validator->errors()->first()
@@ -154,91 +141,65 @@ class UserController extends Controller
                 }
             }
 
-            // do {
-            //     $code = rand(100000, 999999);
-            // } while (User::where('referral_code', $code)->exists());
-
             if (Auth::user()->type == 'super admin') {
                 $date = date("Y-m-d H:i:s");
                 $userpassword = $request->input('password');
+                
                 $user = User::create(
                     [
                         'first_name' => $request['first_name'],
                         'last_name' => $request['last_name'],
                         'email' => $request['email'],
-                        // 'is_login_enable' => !empty($request->password_switch) && $request->password_switch == 'on' ? 1 : 0,
+                        'subscription' => $request['subscription'] ?? 'Basic', // Default subscription
                         'is_login_enable' => 1,
-                        'password' => !empty($userpassword) ? Hash::make($userpassword) : null,
+                        'password' => !empty($userpassword) ? Hash::make($userpassword) : Hash::make('password123'), // Default password jika kosong
                         'type' => 'company',
                         'avatar' => '',
                         'company_id' => Utility::generateCompanyId(),
-                        // 'plan' => $plan = Plan::where('price', '<=', 0)->first()->id,
-                        // 'lang' => !empty($default_language) ? $default_language->value : 'en',
                         'lang' => 'en',
-                        // 'referral_code' => $code,
+                        'plan' => 0, // Default plan Basic
+                        'is_active' => 1,
+                        'dark_mode' => 0,
+                        'messenger_color' => '#2180f3',
+                        'is_disable' => 1,
                         'created_by' => Auth::user()->id,
                         'email_verified_at' => $date,
                     ]
                 );
 
                 $user->assignRole('Company');
-                // $user->userDefaultData();
-                // $user->userDefaultDataRegister($user->id);
-                // GenerateOfferLetter::defaultOfferLetterRegister($user->id);
-                // ExperienceCertificate::defaultExpCertificatRegister($user->id);
-                // JoiningLetter::defaultJoiningLetterRegister($user->id);
-                // NOC::defaultNocCertificateRegister($user->id);
-                // Utility::jobStage($user->id);
                 $role_r = Role::findById(2);
-
-                //create company default roles
                 Utility::MakeRole($user->id);
             } else {
-                $objUser    = Auth::user()->creatorId();
+                $objUser = Auth::user()->creatorId();
                 $objUser = User::find($objUser);
-                // $total_user = $objUser->countUsers();
-                // $plan       = Plan::find($objUser->plan);
                 $userpassword = $request->input('password');
-
-                // if ($total_user < $plan->max_users || $plan->max_users == -1) {
 
                 $role_r = Role::findById($request->type, 'web');
                 $date = date("Y-m-d H:i:s");
-                $user   = User::create(
+                
+                $user = User::create(
                     [
                         'first_name' => $request['first_name'],
                         'last_name' => $request['last_name'],
                         'email' => $request['email'],
-                        // 'is_login_enable' => !empty($request->password_switch) && $request->password_switch == 'on' ? 1 : 0,
+                        'subscription' => $request['subscription'] ?? 'Basic', // Default subscription
                         'is_login_enable' => 1,
-                        'password' => !empty($userpassword) ? Hash::make($userpassword) : null,
+                        'password' => !empty($userpassword) ? Hash::make($userpassword) : Hash::make('password123'), // Default password jika kosong
                         'type' => $role_r->name,
                         'avatar' => '',
-                        // 'lang' => !empty($default_language) ? $default_language->value : 'en',
                         'lang' => 'en',
+                        'plan' => 0, // Default plan Basic
+                        'is_active' => 1,
+                        'dark_mode' => 0,
+                        'messenger_color' => '#2180f3',
+                        'is_disable' => 1,
                         'created_by' => Auth::user()->creatorId(),
                         'email_verified_at' => $date,
                     ]
                 );
                 $user->assignRole($role_r);
-
-                // } else {
-                //     return redirect()->back()->with('error', __('Your user limit is over, Please upgrade plan.'));
-                // }
             }
-
-            // $setings = Utility::settings();
-            // if ($setings['new_user'] == 1) {
-
-            //     $uArr = [
-            //         'email' => $user->email,
-            //         'password' => $request->password,
-            //     ];
-
-            //     $resp = Utility::sendEmailTemplate('new_user', [$user->id => $user->email], $uArr);
-
-            //     return redirect()->route('user.index')->with('success', __('User successfully created.') . ((!empty($resp) && $resp['is_success'] == false && !empty($resp['error'])) ? '<br> <span class="text-danger">' . $resp['error'] . '</span>' : ''));
-            // }
 
             return response()->json([
                 'status'    => true,
@@ -270,6 +231,7 @@ class UserController extends Controller
             'first_name' => 'required',
             'last_name' => 'required',
             'email' => 'unique:users,email,' . $id,
+            'subscription' => 'nullable|string|max:255',
         ];
 
         // Add password validation only if password field is present
@@ -293,7 +255,8 @@ class UserController extends Controller
 
         // Handle password update if provided
         if ($request->has('password') && !empty($request->password)) {
-            $input['password'] = bcrypt($request->password);
+            // Pastikan password selalu di-hash dengan bcrypt
+            $input['password'] = Hash::make($request->password);
         } else {
             // Remove password from input if not provided
             unset($input['password']);
@@ -332,6 +295,38 @@ class UserController extends Controller
             return response()->json([
                 'status'    => false,
                 'message' => __('Permission denied.')
+            ], 403);
+        }
+    }
+
+    /**
+     * Method untuk migrate password lama ke bcrypt
+     * Panggil ini jika ada user dengan password plain text
+     */
+    public function migratePasswords()
+    {
+        if (Auth::user()->type == 'super admin') {
+            $users = User::all();
+            $migrated = 0;
+
+            foreach ($users as $user) {
+                // Cek apakah password sudah bcrypt (biasanya panjang 60 karakter)
+                if (strlen($user->password) < 60) {
+                    // Anggap ini plain text, hash dengan bcrypt
+                    $user->password = Hash::make($user->password);
+                    $user->save();
+                    $migrated++;
+                }
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => "Successfully migrated {$migrated} passwords to bcrypt."
+            ]);
+        } else {
+            return response()->json([
+                'status' => false,
+                'message' => 'Permission denied.'
             ], 403);
         }
     }
